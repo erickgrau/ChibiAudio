@@ -85,7 +85,7 @@ open LocalMusic.xcodeproj
 | `LocalMusicApp` | Tabs: Library, Now Playing, Playlists, Radio |
 | `AudioPlayerManager` | AVPlayer queue, remote commands, DAC session, cloud prep |
 | `CodecRouter` / `DACSession` / `DSDRouter` | Format matrix + THX Onyx USB path |
-| `EqualizerController` | 10-band EQ; forced off in DAC bit-perfect mode |
+| `EqualizerController` | 10-band EQ UI + presets; **forced off** in DAC bit-perfect mode. Float-PCM `AVAudioEngine` insert is the next step (AVPlayer path stays clean when Flat/DAC) |
 | `Playlist` + `PlaylistSourceRef` | Multi-source entries (file / stream / Plex / Apple Music stub) |
 | `AppPlaylistStore` | App-owned JSON playlists in Documents |
 | `PlexClient` | PMS sections + direct/stream URLs |
