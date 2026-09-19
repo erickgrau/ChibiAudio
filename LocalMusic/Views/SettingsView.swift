@@ -3,7 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
 
-    private static let githubURL = URL(string: "https://github.com/j23n/localmusic")!
+    private static let forkURL = URL(string: "https://github.com/erickgrau/ChibiAudio")!
+    private static let upstreamURL = URL(string: "https://github.com/j23n/localmusic")!
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -74,7 +75,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Crash Reporting")
                 } footer: {
-                    Text("When on, LocalMusic captures crash details and recent log entries on this device. Nothing is sent automatically — if a crash is captured, a banner appears here in Settings and you can choose to share the report with the developer. Logs include file names and folder paths from your library. Off by default. App Store crash analytics (system-level) are unaffected by this setting.")
+                    Text("When on, ChibiAudio captures crash details and recent log entries on this device. Nothing is sent automatically — if a crash is captured, a banner appears here in Settings and you can choose to share the report with the developer. Logs include file names and folder paths from your library. Off by default. App Store crash analytics (system-level) are unaffected by this setting.")
                 }
 
                 if crashReportingEnabled, crashService.hasPendingCrash {
@@ -92,24 +93,37 @@ struct SettingsView: View {
 
                 Section("About") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("LocalMusic plays audio files from a folder of your choice — no streaming, no accounts.")
+                        Text("ChibiAudio is a fork of LocalMusic. Local and cloud folders are primary; free internet radio is built-in. Apple Music catalogue search is optional and requires a paid Apple Music subscription.")
                             .font(.callout)
 
-                        Text("Found a bug or have feedback? Open an issue or get in touch:")
+                        Text("Based on open-source LocalMusic (MPL-2.0). Found a bug or have feedback?")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
 
                     Button {
-                        openURL(Self.githubURL)
+                        openURL(Self.forkURL)
                     } label: {
                         LabeledContent {
                             Image(systemName: "arrow.up.right")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } label: {
-                            Label("GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                            Label("ChibiAudio on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                        }
+                    }
+                    .tint(.primary)
+
+                    Button {
+                        openURL(Self.upstreamURL)
+                    } label: {
+                        LabeledContent {
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label("Upstream LocalMusic", systemImage: "link")
                         }
                     }
                     .tint(.primary)
@@ -148,7 +162,7 @@ struct SettingsView: View {
     private var crashSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                Label("LocalMusic crashed last session", systemImage: "exclamationmark.triangle.fill")
+                Label("ChibiAudio crashed last session", systemImage: "exclamationmark.triangle.fill")
                     .font(.headline)
                     .foregroundStyle(.orange)
                 Text("A crash report was captured. You can share it with the developer to help diagnose the issue, or dismiss it.")
@@ -177,7 +191,7 @@ struct SettingsView: View {
 
         if let data = crashService.pendingCrashReport() {
             let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("localmusic-crash-\(stamp).json")
+                .appendingPathComponent("chibiaudio-crash-\(stamp).json")
             if (try? data.write(to: url, options: .atomic)) != nil {
                 items.append(url)
             }
@@ -185,7 +199,7 @@ struct SettingsView: View {
 
         if let data = crashService.recentLogTail() {
             let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("localmusic-logs-\(stamp).txt")
+                .appendingPathComponent("chibiaudio-logs-\(stamp).txt")
             if (try? data.write(to: url, options: .atomic)) != nil {
                 items.append(url)
             }

@@ -83,10 +83,10 @@ struct LibraryView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(.secondary)
 
-            Text("Welcome to LocalMusic")
+            Text("Welcome to ChibiAudio")
                 .font(.title2.bold())
 
-            Text("Select a folder containing your audio files to get started.")
+            Text("Select a folder on this iPhone, iCloud Drive, or another Files provider (e.g. Google Drive) to build your library — plays fully offline once files are local.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 32)
