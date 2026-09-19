@@ -121,9 +121,11 @@ final class LibraryStore {
 
         if let url = folderURL {
             startScanAccess(url)
-            playlists = await MetadataLoader.scanPlaylists(in: url)
-            Log.library.info("Loaded \(playlists.count) playlists from \(url.lastPathComponent)")
+            playlists = await loadAllPlaylists()
+            Log.library.info("Loaded \(playlists.count) playlists")
             await rescanIfNeeded()
+        } else {
+            playlists = AppPlaylistStore.loadAll()
         }
     }
 
@@ -146,7 +148,7 @@ final class LibraryStore {
         if needsRescan {
             await rescan()
         } else {
-            playlists = await MetadataLoader.scanPlaylists(in: folderURL)
+            playlists = await loadAllPlaylists()
         }
     }
 
@@ -248,7 +250,7 @@ final class LibraryStore {
         }
 
         if Task.isCancelled || folderURL != capturedURL { return }
-        let found = await MetadataLoader.scanPlaylists(in: capturedURL)
+        let found = await loadAllPlaylists()
         if Task.isCancelled || folderURL != capturedURL { return }
         playlists = found
     }
@@ -268,14 +270,25 @@ final class LibraryStore {
     // MARK: - Playlists
 
     func refreshPlaylistsFromDisk() {
-        guard let folderURL else { return }
         Task {
-            playlists = await MetadataLoader.scanPlaylists(in: folderURL)
+            playlists = await loadAllPlaylists()
         }
     }
 
+    /// Folder `.m3u` / `.pls` plus app-owned multi-source JSON playlists.
+    private func loadAllPlaylists() async -> [Playlist] {
+        var combined: [Playlist] = AppPlaylistStore.loadAll()
+        if let folderURL {
+            let disk = await MetadataLoader.scanPlaylists(in: folderURL)
+            combined.append(contentsOf: disk)
+        }
+        combined.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return combined
+    }
+
     func savePlaylist(_ playlist: Playlist) {
-        Log.library.debug("Save playlist: \(playlist.name) (\(playlist.trackURLs.count) tracks)")
+        let count = max(playlist.entries.count, playlist.trackURLs.count)
+        Log.library.debug("Save playlist: \(playlist.name) (\(count) items)")
         if let idx = playlists.firstIndex(where: { $0.id == playlist.id }) {
             playlists[idx] = playlist
         }
@@ -285,27 +298,29 @@ final class LibraryStore {
     func deletePlaylists(at offsets: IndexSet) {
         for idx in offsets {
             Log.library.info("Delete playlist: \(playlists[idx].name)")
-            do {
-                try FileManager.default.removeItem(at: playlists[idx].fileURL)
-            } catch {
-                Log.library.error("Failed to delete playlist file: \(error.localizedDescription)")
+            let playlist = playlists[idx]
+            if playlist.isAppOwned {
+                AppPlaylistStore.delete(playlist)
+            } else {
+                do {
+                    try FileManager.default.removeItem(at: playlist.fileURL)
+                } catch {
+                    Log.library.error("Failed to delete playlist file: \(error.localizedDescription)")
+                }
             }
         }
         playlists.remove(atOffsets: offsets)
     }
 
     func createPlaylist(name: String) -> Playlist? {
-        guard let folderURL else {
-            Log.library.warning("createPlaylist: no folder selected")
-            return nil
-        }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             Log.library.warning("createPlaylist: empty name rejected")
             return nil
         }
-        let playlist = MetadataLoader.createPlaylist(name: trimmed, in: folderURL)
-        Log.library.info("Created playlist: \(playlist.name)")
+        // App-owned unified playlists so rows can mix local / Plex / radio.
+        let playlist = MetadataLoader.createAppOwnedPlaylist(name: trimmed)
+        Log.library.info("Created app playlist: \(playlist.name)")
         playlists.append(playlist)
         playlists.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         return playlist

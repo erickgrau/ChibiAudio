@@ -257,9 +257,9 @@ private struct TrackRowButton: View {
     private func addTrack(_ track: Track, to playlist: Playlist) {
         guard let idx = library.playlists.firstIndex(where: { $0.id == playlist.id }) else { return }
         var updated = library.playlists[idx]
-        updated.trackURLs.append(track.url)
         let baseDir = updated.fileURL.deletingLastPathComponent()
-        updated.rawPaths.append(MetadataLoader.relativePath(for: track.url, relativeTo: baseDir))
+        let display = MetadataLoader.relativePath(for: track.url, relativeTo: baseDir)
+        updated.appendLocal(url: track.url, displayPath: display)
         library.savePlaylist(updated)
     }
 }

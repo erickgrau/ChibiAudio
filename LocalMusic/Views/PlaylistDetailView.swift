@@ -32,7 +32,7 @@ struct PlaylistDetailView: View {
 
     var body: some View {
         Group {
-            if playlist.trackURLs.isEmpty {
+            if playlist.entries.isEmpty && playlist.trackURLs.isEmpty {
                 emptyState
             } else {
                 listBody
@@ -55,6 +55,7 @@ struct PlaylistDetailView: View {
             AddTracksSheet(playlist: $playlist)
         }
         .onAppear { rebuildCaches() }
+        .onChange(of: playlist.entries) { _, _ in rebuildCaches() }
         .onChange(of: playlist.trackURLs) { _, _ in rebuildCaches() }
         .onChange(of: library.tracks.count) { _, _ in rebuildCaches() }
         // Track == is id-only, so a rescan that replaces files in place
@@ -80,7 +81,7 @@ struct PlaylistDetailView: View {
             Text("Empty Playlist")
                 .font(.title3)
                 .fontWeight(.medium)
-            Text("Tap + to add tracks from your library.")
+            Text("Tap + to add tracks from your library. App-owned playlists can also hold Plex and radio items.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -123,13 +124,11 @@ struct PlaylistDetailView: View {
                     }
                 }
                 .onMove { from, to in
-                    playlist.trackURLs.move(fromOffsets: from, toOffset: to)
-                    playlist.rawPaths.move(fromOffsets: from, toOffset: to)
+                    playlist.moveEntries(from: from, to: to)
                     library.savePlaylist(playlist)
                 }
                 .onDelete { offsets in
-                    playlist.trackURLs.remove(atOffsets: offsets)
-                    playlist.rawPaths.remove(atOffsets: offsets)
+                    playlist.removeEntries(at: offsets)
                     library.savePlaylist(playlist)
                 }
             } header: {
@@ -163,16 +162,39 @@ struct PlaylistDetailView: View {
     private func rebuildCaches() {
         var items: [PlaylistItem] = []
         var resolved: [Track] = []
-        items.reserveCapacity(playlist.trackURLs.count)
-        for (index, url) in playlist.trackURLs.enumerated() {
-            if let track = library.track(forURL: url) {
-                // startIndex among resolved rows, so a second copy of the
-                // same file (shared Track.id) still plays the tapped row.
+        let plex = PlexClient.shared
+
+        let sourceEntries: [PlaylistEntry] = playlist.entries.isEmpty
+            ? zip(playlist.trackURLs, playlist.rawPaths).map { url, path in
+                PlaylistEntry(source: .localFile(urlString: url.absoluteString, displayPath: path))
+            }
+            : playlist.entries
+
+        items.reserveCapacity(sourceEntries.count)
+        for (index, entry) in sourceEntries.enumerated() {
+            switch PlaylistResolver.resolve(entry, plexStreamURL: { server, key in
+                plex.directPlayURL(serverURL: server, ratingKey: key)
+            }) {
+            case .success(var track):
+                if case .localFile = entry.source,
+                   let libraryTrack = library.track(forURL: track.url) {
+                    track = libraryTrack
+                }
                 items.append(.resolved(index: index, track: track, queueIndex: resolved.count))
                 resolved.append(track)
-            } else {
-                let raw = index < playlist.rawPaths.count ? playlist.rawPaths[index] : url.path
-                items.append(.missing(index: index, rawPath: raw))
+            case .failure(let gate):
+                let label: String
+                switch gate {
+                case .needsAppleMusicSubscription:
+                    label = "\(entry.source.displayTitle) — needs Apple Music"
+                case .needsPlexServer:
+                    label = "\(entry.source.displayTitle) — configure Plex in Settings"
+                case .unsupported:
+                    label = entry.source.displayTitle
+                case .playable:
+                    label = entry.source.displayTitle
+                }
+                items.append(.missing(index: index, rawPath: label))
             }
         }
         self.cachedItems = items
@@ -341,22 +363,26 @@ struct AddTracksSheet: View {
 
     private func toggle(_ track: Track) {
         guard var working = workingPlaylist else { return }
+        if working.entries.isEmpty, !working.trackURLs.isEmpty {
+            working.rebuildEntriesFromLegacyLocals()
+        }
         let key = track.url.standardized
         if includedURLs.contains(key) {
             includedURLs.remove(key)
-            let indices = working.trackURLs.enumerated()
-                .filter { $0.element.standardized == key }
-                .map(\.offset)
-            for index in indices.reversed() {
-                working.trackURLs.remove(at: index)
-                working.rawPaths.remove(at: index)
+            let indices = working.entries.enumerated().compactMap { idx, entry -> Int? in
+                if case .localFile(let urlString, _) = entry.source,
+                   URL(string: urlString)?.standardized == key {
+                    return idx
+                }
+                return nil
             }
+            working.removeEntries(at: IndexSet(indices))
         } else {
             includedURLs.insert(key)
-            working.trackURLs.append(track.url)
             let baseDir = working.fileURL.deletingLastPathComponent()
-            working.rawPaths.append(
-                MetadataLoader.relativePath(for: track.url, relativeTo: baseDir)
+            working.appendLocal(
+                url: track.url,
+                displayPath: MetadataLoader.relativePath(for: track.url, relativeTo: baseDir)
             )
         }
         workingPlaylist = working
