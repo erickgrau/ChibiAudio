@@ -83,10 +83,10 @@ struct LibraryView: View {
                 .font(.system(size: 64))
                 .foregroundStyle(.secondary)
 
-            Text("Welcome to LocalMusic")
+            Text("Welcome to ChibiAudio")
                 .font(.title2.bold())
 
-            Text("Select a folder containing your audio files to get started.")
+            Text("Select a folder on this iPhone, iCloud Drive, or another Files provider (e.g. Google Drive) to build your library — plays fully offline once files are local.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 32)
@@ -257,9 +257,9 @@ private struct TrackRowButton: View {
     private func addTrack(_ track: Track, to playlist: Playlist) {
         guard let idx = library.playlists.firstIndex(where: { $0.id == playlist.id }) else { return }
         var updated = library.playlists[idx]
-        updated.trackURLs.append(track.url)
         let baseDir = updated.fileURL.deletingLastPathComponent()
-        updated.rawPaths.append(MetadataLoader.relativePath(for: track.url, relativeTo: baseDir))
+        let display = MetadataLoader.relativePath(for: track.url, relativeTo: baseDir)
+        updated.appendLocal(url: track.url, displayPath: display)
         library.savePlaylist(updated)
     }
 }

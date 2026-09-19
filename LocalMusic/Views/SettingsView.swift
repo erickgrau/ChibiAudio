@@ -2,8 +2,10 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(AudioPlayerManager.self) private var player
 
-    private static let githubURL = URL(string: "https://github.com/j23n/localmusic")!
+    private static let forkURL = URL(string: "https://github.com/erickgrau/ChibiAudio")!
+    private static let upstreamURL = URL(string: "https://github.com/j23n/localmusic")!
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
@@ -14,12 +16,15 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showFolderPicker = false
     @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
+    @AppStorage(DACSession.dacModeDefaultsKey) private var dacModeEnabled = false
+    @State private var plexServer = PlexClient.shared.serverURLString
+    @State private var plexToken = PlexClient.shared.token
     private let crashService = CrashDiagnosticsService.shared
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Music Folder") {
+                Section {
                     Button {
                         showFolderPicker = true
                     } label: {
@@ -62,6 +67,47 @@ struct SettingsView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Music Folder")
+                } footer: {
+                    Text("Pick On My iPhone, app Documents, iCloud Drive, or Google Drive (install the Drive app and enable it under Files). Bookmarks persist; cloud files download-to-play when the provider supports it.")
+                }
+
+                Section {
+                    Toggle("Hi-res / DAC mode", isOn: $dacModeEnabled)
+                    LabeledContent("Output", value: player.audioRouteSummary)
+                    NavigationLink("Equalizer") {
+                        EqualizerView()
+                    }
+                } header: {
+                    Text("Audio · THX Onyx")
+                } footer: {
+                    Text("Reference DAC: THX Onyx (ESS ES9281PRO). DAC mode maximizes preferred sample rate for USB and forces EQ off for a cleaner bit-perfect PCM path. MQA = hardware renderer on the Onyx — no software MQA decode in free ChibiAudio. DSD prefers DoP (encoder not in free v1 yet; never silent lossy fall-back).")
+                }
+                .onChange(of: dacModeEnabled) { _, _ in
+                    player.reloadAudioSessionPreference()
+                }
+
+                Section {
+                    TextField("Server URL (http://…:32400)", text: $plexServer)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    SecureField("X-Plex-Token", text: $plexToken)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Button("Save Plex Settings") {
+                        let client = PlexClient.shared
+                        client.serverURLString = plexServer.trimmingCharacters(in: .whitespacesAndNewlines)
+                        client.token = plexToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                    NavigationLink("Browse Plex Music") {
+                        PlexBrowserView()
+                    }
+                } header: {
+                    Text("Plex")
+                } footer: {
+                    Text("Personal PMS only. Create a token at plex.tv/claim or from account XML. LAN direct play of your library works without Plex Pass; some remote features may need Pass.")
                 }
 
                 Section("Stats") {
@@ -74,7 +120,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Crash Reporting")
                 } footer: {
-                    Text("When on, LocalMusic captures crash details and recent log entries on this device. Nothing is sent automatically — if a crash is captured, a banner appears here in Settings and you can choose to share the report with the developer. Logs include file names and folder paths from your library. Off by default. App Store crash analytics (system-level) are unaffected by this setting.")
+                    Text("When on, ChibiAudio captures crash details and recent log entries on this device. Nothing is sent automatically — if a crash is captured, a banner appears here in Settings and you can choose to share the report with the developer. Logs include file names and folder paths from your library. Off by default. App Store crash analytics (system-level) are unaffected by this setting.")
                 }
 
                 if crashReportingEnabled, crashService.hasPendingCrash {
@@ -92,24 +138,37 @@ struct SettingsView: View {
 
                 Section("About") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("LocalMusic plays audio files from a folder of your choice — no streaming, no accounts.")
+                        Text("ChibiAudio is a free fork of LocalMusic. Local/cloud folders and app-owned mixed playlists need no subscription. Apple Music catalog play (optional later) needs Apple Music.")
                             .font(.callout)
 
-                        Text("Found a bug or have feedback? Open an issue or get in touch:")
+                        Text("Based on open-source LocalMusic (MPL-2.0). Found a bug or have feedback?")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
 
                     Button {
-                        openURL(Self.githubURL)
+                        openURL(Self.forkURL)
                     } label: {
                         LabeledContent {
                             Image(systemName: "arrow.up.right")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } label: {
-                            Label("GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                            Label("ChibiAudio on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                        }
+                    }
+                    .tint(.primary)
+
+                    Button {
+                        openURL(Self.upstreamURL)
+                    } label: {
+                        LabeledContent {
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label("Upstream LocalMusic", systemImage: "link")
                         }
                     }
                     .tint(.primary)
@@ -141,6 +200,10 @@ struct SettingsView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { crashService.refreshPendingCrash() }
             }
+            .onAppear {
+                plexServer = PlexClient.shared.serverURLString
+                plexToken = PlexClient.shared.token
+            }
         }
     }
 
@@ -148,7 +211,7 @@ struct SettingsView: View {
     private var crashSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                Label("LocalMusic crashed last session", systemImage: "exclamationmark.triangle.fill")
+                Label("ChibiAudio crashed last session", systemImage: "exclamationmark.triangle.fill")
                     .font(.headline)
                     .foregroundStyle(.orange)
                 Text("A crash report was captured. You can share it with the developer to help diagnose the issue, or dismiss it.")
@@ -177,7 +240,7 @@ struct SettingsView: View {
 
         if let data = crashService.pendingCrashReport() {
             let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("localmusic-crash-\(stamp).json")
+                .appendingPathComponent("chibiaudio-crash-\(stamp).json")
             if (try? data.write(to: url, options: .atomic)) != nil {
                 items.append(url)
             }
@@ -185,7 +248,7 @@ struct SettingsView: View {
 
         if let data = crashService.recentLogTail() {
             let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("localmusic-logs-\(stamp).txt")
+                .appendingPathComponent("chibiaudio-logs-\(stamp).txt")
             if (try? data.write(to: url, options: .atomic)) != nil {
                 items.append(url)
             }

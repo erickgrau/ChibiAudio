@@ -135,6 +135,10 @@ struct NowPlayingView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
+                    Text(player.audioRouteSummary)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, 24)
 

@@ -25,15 +25,26 @@ final class MetadataLoaderTests {
         #expect(MetadataLoader.resolveTrackPath("", baseDir: tempDir) == nil)
     }
 
-    @Test func resolveTrackPath_httpReturnsNil() {
-        #expect(MetadataLoader.resolveTrackPath("http://example.com/a.mp3", baseDir: tempDir) == nil)
-        #expect(MetadataLoader.resolveTrackPath("https://example.com/a.mp3", baseDir: tempDir) == nil)
-        #expect(MetadataLoader.resolveTrackPath("HTTPS://EXAMPLE.com/a.mp3", baseDir: tempDir) == nil)
+    @Test func resolveTrackPath_httpReturnsStreamURL() {
+        let http = MetadataLoader.resolveTrackPath("http://example.com/a.mp3", baseDir: tempDir)
+        #expect(http?.absoluteString == "http://example.com/a.mp3")
+        let https = MetadataLoader.resolveTrackPath("https://example.com/a.mp3", baseDir: tempDir)
+        #expect(https?.absoluteString == "https://example.com/a.mp3")
+        let upper = MetadataLoader.resolveTrackPath("HTTPS://EXAMPLE.com/a.mp3", baseDir: tempDir)
+        #expect(upper != nil)
     }
 
     @Test func resolveTrackPath_unsupportedExtensionReturnsNil() {
         #expect(MetadataLoader.resolveTrackPath("readme.txt", baseDir: tempDir) == nil)
-        #expect(MetadataLoader.resolveTrackPath("/abs/song.ogg", baseDir: tempDir) == nil)
+        #expect(MetadataLoader.resolveTrackPath("/abs/song.xyz", baseDir: tempDir) == nil)
+    }
+
+    @Test func resolveTrackPath_oggAcceptedForLibraryListing() {
+        let resolved = MetadataLoader.resolveTrackPath("song.ogg", baseDir: tempDir)
+        #expect(
+            resolved?.standardized.path ==
+            tempDir.appendingPathComponent("song.ogg").standardized.path
+        )
     }
 
     @Test func resolveTrackPath_relativeJoinsBaseDir() {

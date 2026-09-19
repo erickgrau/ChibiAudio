@@ -83,7 +83,7 @@ struct PlaylistsView: View {
             Text("No Playlists Found")
                 .font(.title3)
                 .fontWeight(.medium)
-            Text("Add .m3u or .pls files to your music folder, or tap + to create one.")
+            Text("Tap + to create an app-owned mixed playlist (local + Plex + radio), or add .m3u / .pls files to your music folder.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -103,7 +103,7 @@ struct PlaylistsView: View {
                 Text(playlist.name)
                     .font(.callout)
                     .fontWeight(.medium)
-                Text("\(playlist.trackURLs.count) track\(playlist.trackURLs.count == 1 ? "" : "s")")
+                Text("\(max(playlist.entries.count, playlist.trackURLs.count)) item\(max(playlist.entries.count, playlist.trackURLs.count) == 1 ? "" : "s")\(playlist.isAppOwned ? " · Mixed" : "")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
