@@ -98,7 +98,7 @@ open LocalMusic.xcodeproj
 - CodecRouter format matrix; CloudFileAccess download-to-play
 - THX Onyx–oriented DAC mode, route UI, MQA/DSD policy
 - Unified multi-source playlists (app-owned JSON + m3u http URLs)
-- Free Radio tab; Plex browse/stream; graphic EQ (bit-perfect aware)
+- Free Radio tab; Plex browse/stream; graphic EQ UI (bit-perfect aware; engine insert TBD)
 - README sources matrix + research lock + hardware section
 
 ## License
