@@ -13,33 +13,46 @@ struct NowPlayingView: View {
 
     var body: some View {
         NavigationStack {
-            if let track = player.currentTrack {
-                nowPlayingContent(track: track)
-                    .navigationTitle("Now Playing")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .task(id: track.id) {
-                        await loadAuxiliary(for: track)
-                    }
-            } else {
-                VStack(spacing: 16) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color.accentColor.opacity(0.12))
-                            .frame(width: 100, height: 100)
-                        Image(systemName: "play.circle")
-                            .font(.system(size: 40))
-                            .foregroundColor(Color.accentColor)
-                    }
-                    Text("Nothing Playing")
-                        .font(.title2)
-                        .fontWeight(.medium)
-                    Text("Select a track from the Library to start playing.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
+            Group {
+                if let track = player.currentTrack {
+                    nowPlayingContent(track: track)
+                        .task(id: track.id) {
+                            await loadAuxiliary(for: track)
+                        }
+                } else {
+                    emptyNowPlaying
                 }
-                .navigationTitle("Now Playing")
-                .navigationBarTitleDisplayMode(.inline)
             }
+            .navigationTitle("Now Playing")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        }
+        .chibiCanvas()
+    }
+
+    private var emptyNowPlaying: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(ChibiTheme.softGlass)
+                    .frame(width: 100, height: 100)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
+                    )
+                Image(systemName: "play.circle")
+                    .font(.system(size: 40))
+                    .foregroundStyle(ChibiTheme.amber)
+            }
+            Text("Nothing Playing")
+                .font(ChibiTheme.heroTitleFont())
+                .foregroundStyle(ChibiTheme.textPrimary)
+            Text("Select a track from the Library to start playing.")
+                .font(.body)
+                .foregroundStyle(ChibiTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
         }
     }
 
@@ -47,192 +60,198 @@ struct NowPlayingView: View {
         isSeeking ? seekTarget : player.currentTime
     }
 
+    private var routeInfo: DACSession.RouteInfo {
+        DACSession.currentRouteInfo()
+    }
+
+    private var showBitPerfectPill: Bool {
+        DACSession.isDACModeEnabled && routeInfo.isUSBAudio
+    }
+
     private func nowPlayingContent(track: Track) -> some View {
         let color = Color(artworkColor)
-        // Only show the flip affordance once the lyrics payload is loaded
-        // and confirmed non-empty, so we don't promise content the disk
-        // load might fail to deliver.
         let hasLoadedLyrics = lyrics?.isEmpty == false
+        let source = MediaSourceKind.infer(from: track.url)
 
         return GeometryReader { geo in
-            let artworkSize = min(max(geo.size.width - 48, 0), geo.size.height * 0.45)
+            // Huge art: dominate the first viewport
+            let artworkSize = min(max(geo.size.width - 24, 0), geo.size.height * 0.52)
 
             ZStack {
-            // Ambient background
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            color.opacity(0.5),
-                            color.opacity(0.12),
-                            .clear
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+                ChibiTheme.canvasDeep.ignoresSafeArea()
+
+                // Soft ambient wash from artwork (kept subdued on Onyx)
+                LinearGradient(
+                    colors: [
+                        color.opacity(0.28),
+                        ChibiTheme.canvasDeep.opacity(0.9),
+                        ChibiTheme.canvasDeep
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 0.8), value: track.id)
 
-            VStack(spacing: 0) {
-                Spacer()
+                VStack(spacing: 0) {
+                    Spacer(minLength: 8)
 
-                // Artwork / Lyrics flip
-                ZStack {
-                    artworkView(track: track, size: artworkSize)
-                        .frame(width: artworkSize, height: artworkSize)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(.white.opacity(0.1), lineWidth: 1)
-                        )
-                        .opacity(showLyrics ? 0 : 1)
-                        .rotation3DEffect(.degrees(showLyrics ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+                    ZStack {
+                        artworkView(track: track, size: artworkSize)
+                            .frame(width: artworkSize, height: artworkSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
+                            )
+                            .opacity(showLyrics ? 0 : 1)
+                            .rotation3DEffect(.degrees(showLyrics ? 180 : 0), axis: (x: 0, y: 1, z: 0))
 
-                    lyricsView(track: track, size: artworkSize)
-                        .frame(width: artworkSize, height: artworkSize)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .opacity(showLyrics ? 1 : 0)
-                        .rotation3DEffect(.degrees(showLyrics ? 0 : -180), axis: (x: 0, y: 1, z: 0))
-                }
-                .shadow(color: color.opacity(0.45), radius: 28, x: 0, y: 12)
-                .animation(.spring(response: 0.5), value: track.id)
-                .onTapGesture {
-                    if hasLoadedLyrics {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                            showLyrics.toggle()
-                        }
+                        lyricsView(track: track, size: artworkSize)
+                            .frame(width: artworkSize, height: artworkSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .opacity(showLyrics ? 1 : 0)
+                            .rotation3DEffect(.degrees(showLyrics ? 0 : -180), axis: (x: 0, y: 1, z: 0))
                     }
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    if hasLoadedLyrics && !showLyrics {
-                        Image(systemName: "quote.opening")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .padding(6)
-                            .background(.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 6))
-                            .padding(10)
-                    }
-                }
-                .onChange(of: track.id) { _, _ in
-                    showLyrics = false
-                }
-
-                Spacer().frame(height: 28)
-
-                // Track info
-                VStack(spacing: 4) {
-                    Text(track.title)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .lineLimit(1)
-                    Text(track.artist)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text(track.album)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                    Text(player.audioRouteSummary)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 24)
-
-                Spacer().frame(height: 28)
-
-                // Seek slider
-                VStack(spacing: 4) {
-                    Slider(
-                        value: Binding(
-                            get: { displayedTime },
-                            set: { seekTarget = $0 }
-                        ),
-                        in: 0...max(player.duration, 1),
-                        onEditingChanged: { editing in
-                            if editing {
-                                isSeeking = true
-                                seekTarget = player.currentTime
-                            } else {
-                                player.seek(to: seekTarget)
-                                isSeeking = false
+                    .shadow(color: .black.opacity(0.45), radius: 28, x: 0, y: 16)
+                    .animation(.spring(response: 0.5), value: track.id)
+                    .onTapGesture {
+                        if hasLoadedLyrics {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                showLyrics.toggle()
                             }
                         }
-                    )
-                    .tint(.primary)
-
-                    HStack {
-                        Text(formatTime(displayedTime))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                        Spacer()
-                        Text("-\(formatTime(max(0, player.duration - displayedTime)))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
                     }
-                }
-                .padding(.horizontal, 24)
-
-                Spacer().frame(height: 24)
-
-                // Transport controls
-                HStack(spacing: 44) {
-                    Button { player.previous() } label: {
-                        Image(systemName: "backward.end.fill")
-                            .font(.system(size: 28))
+                    .overlay(alignment: .bottomTrailing) {
+                        if hasLoadedLyrics && !showLyrics {
+                            Image(systemName: "quote.opening")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(ChibiTheme.textPrimary)
+                                .padding(8)
+                                .background(ChibiTheme.softGlass, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .padding(12)
+                        }
+                    }
+                    .onChange(of: track.id) { _, _ in
+                        showLyrics = false
                     }
 
-                    Button { player.togglePlayPause() } label: {
-                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                            .font(.system(size: 44))
-                            .contentTransition(.symbolEffect(.replace))
-                    }
+                    Spacer().frame(height: 20)
 
-                    Button { player.next() } label: {
-                        Image(systemName: "forward.end.fill")
-                            .font(.system(size: 28))
-                    }
-                }
-                .foregroundStyle(.primary)
-
-                Spacer().frame(height: 20)
-
-                // Shuffle & Repeat
-                HStack(spacing: 48) {
-                    Button { player.toggleShuffle() } label: {
-                        Image(systemName: "shuffle")
+                    // Minimal chrome: title + chips
+                    VStack(spacing: 8) {
+                        Text(track.title)
+                            .font(ChibiTheme.heroTitleFont())
+                            .foregroundStyle(ChibiTheme.textPrimary)
+                            .lineLimit(1)
+                        Text(track.artist)
                             .font(.body)
-                            .foregroundStyle(player.shuffleEnabled ? Color.accentColor : .secondary)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(player.shuffleEnabled ? Color.accentColor.opacity(0.15) : .clear)
-                            )
-                            .contentShape(Circle())
-                    }
+                            .foregroundStyle(ChibiTheme.textSecondary)
+                            .lineLimit(1)
 
-                    Button { player.cycleRepeatMode() } label: {
-                        Image(systemName: repeatIcon)
-                            .font(.body)
-                            .foregroundStyle(player.repeatMode != .off ? Color.accentColor : .secondary)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                Circle()
-                                    .fill(player.repeatMode != .off ? Color.accentColor.opacity(0.15) : .clear)
-                            )
-                            .contentShape(Circle())
+                        HStack(spacing: 8) {
+                            SourceChip(kind: source)
+                            SampleRateChip(sampleRateHz: max(routeInfo.currentSampleRate, 44_100))
+                        }
+
+                        if showBitPerfectPill {
+                            BitPerfectOnyxPill()
+                                .padding(.top, 2)
+                        } else {
+                            DACRouteIndicator(summary: routeInfo.summary, isUSB: routeInfo.isUSBAudio)
+                        }
                     }
+                    .padding(.horizontal, 20)
+
+                    Spacer().frame(height: 18)
+
+                    // Transport glass strip
+                    VStack(spacing: 14) {
+                        VStack(spacing: 4) {
+                            Slider(
+                                value: Binding(
+                                    get: { displayedTime },
+                                    set: { seekTarget = $0 }
+                                ),
+                                in: 0...max(player.duration, 1),
+                                onEditingChanged: { editing in
+                                    if editing {
+                                        isSeeking = true
+                                        seekTarget = player.currentTime
+                                    } else {
+                                        player.seek(to: seekTarget)
+                                        isSeeking = false
+                                    }
+                                }
+                            )
+                            .tint(ChibiTheme.amber)
+
+                            HStack {
+                                Text(formatTime(displayedTime))
+                                    .font(ChibiTheme.sampleRateFont())
+                                    .foregroundStyle(ChibiTheme.textSecondary)
+                                Spacer()
+                                Text("-\(formatTime(max(0, player.duration - displayedTime)))")
+                                    .font(ChibiTheme.sampleRateFont())
+                                    .foregroundStyle(ChibiTheme.textSecondary)
+                            }
+                        }
+
+                        HStack(spacing: 44) {
+                            Button { player.previous() } label: {
+                                Image(systemName: "backward.end.fill")
+                                    .font(.system(size: 26))
+                            }
+
+                            Button { player.togglePlayPause() } label: {
+                                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 42))
+                                    .contentTransition(.symbolEffect(.replace))
+                            }
+
+                            Button { player.next() } label: {
+                                Image(systemName: "forward.end.fill")
+                                    .font(.system(size: 26))
+                            }
+                        }
+                        .foregroundStyle(ChibiTheme.textPrimary)
+
+                        HStack(spacing: 48) {
+                            Button { player.toggleShuffle() } label: {
+                                Image(systemName: "shuffle")
+                                    .font(.body)
+                                    .foregroundStyle(player.shuffleEnabled ? ChibiTheme.amber : ChibiTheme.textSecondary)
+                                    .frame(width: 40, height: 40)
+                                    .background(
+                                        Circle()
+                                            .fill(player.shuffleEnabled ? ChibiTheme.amber.opacity(0.15) : .clear)
+                                    )
+                                    .contentShape(Circle())
+                            }
+
+                            Button { player.cycleRepeatMode() } label: {
+                                Image(systemName: repeatIcon)
+                                    .font(.body)
+                                    .foregroundStyle(player.repeatMode != .off ? ChibiTheme.amber : ChibiTheme.textSecondary)
+                                    .frame(width: 40, height: 40)
+                                    .background(
+                                        Circle()
+                                            .fill(player.repeatMode != .off ? ChibiTheme.amber.opacity(0.15) : .clear)
+                                    )
+                                    .contentShape(Circle())
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .chibiGlassCard(cornerRadius: 22)
+                    .padding(.horizontal, 16)
+
+                    Spacer(minLength: 12)
                 }
-
-                Spacer()
             }
-        }
-        .frame(width: geo.size.width, height: geo.size.height)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
     }
 

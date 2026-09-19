@@ -44,6 +44,10 @@ struct LocalMusicApp: App {
                     }
                     .tag(3)
             }
+            .tint(ChibiTheme.amber)
+            .toolbarBackground(ChibiTheme.softGlass, for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
+            .chibiCanvas()
             .environment(player)
             .environment(library)
             .onChange(of: library.tracks) { _, _ in

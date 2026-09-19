@@ -75,9 +75,21 @@ struct SettingsView: View {
 
                 Section {
                     Toggle("Hi-res / DAC mode", isOn: $dacModeEnabled)
-                    LabeledContent("Output", value: player.audioRouteSummary)
-                    NavigationLink("Equalizer") {
+                        .tint(ChibiTheme.teal)
+                    DACRouteIndicator(
+                        summary: player.audioRouteSummary,
+                        isUSB: DACSession.currentRouteInfo().isUSBAudio
+                    )
+                    if dacModeEnabled && DACSession.currentRouteInfo().isUSBAudio {
+                        BitPerfectOnyxPill()
+                            .listRowBackground(Color.clear)
+                    }
+                    SampleRateChip(sampleRateHz: max(DACSession.currentRouteInfo().currentSampleRate, 44_100))
+                        .listRowBackground(Color.clear)
+                    NavigationLink {
                         EqualizerView()
+                    } label: {
+                        Label("Equalizer", systemImage: "slider.horizontal.3")
                     }
                 } header: {
                     Text("Audio · THX Onyx")
@@ -176,6 +188,10 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .chibiListChrome()
+            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .tint(ChibiTheme.amber)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

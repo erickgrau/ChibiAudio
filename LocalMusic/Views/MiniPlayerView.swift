@@ -11,10 +11,9 @@ struct MiniPlayerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Progress bar
             GeometryReader { geo in
                 Capsule()
-                    .fill(Color.accentColor)
+                    .fill(ChibiTheme.amber)
                     .frame(width: geo.size.width * progress, height: 2)
                     .animation(.linear(duration: 0.5), value: progress)
             }
@@ -28,20 +27,25 @@ struct MiniPlayerView: View {
                     pointSize: 48
                 )
                 .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(player.currentTrack?.title ?? "")
                         .font(.callout)
                         .fontWeight(.medium)
+                        .foregroundStyle(ChibiTheme.textPrimary)
                         .lineLimit(1)
                     Text(player.currentTrack?.artist ?? "")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ChibiTheme.textSecondary)
                         .lineLimit(1)
                 }
 
                 Spacer()
+
+                if let url = player.currentTrack?.url {
+                    SourceChip(kind: MediaSourceKind.infer(from: url))
+                }
 
                 Button { player.previous() } label: {
                     Image(systemName: "backward.fill")
@@ -62,11 +66,16 @@ struct MiniPlayerView: View {
                         .font(.body)
                 }
             }
-            .padding(.horizontal, 20)
+            .foregroundStyle(ChibiTheme.textPrimary)
+            .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .background(.bar, in: RoundedRectangle(cornerRadius: 14))
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
+        .background(ChibiTheme.softGlass, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.35), radius: 16, y: 6)
         .padding(.horizontal, 12)
         .padding(.bottom, 4)
         .contentShape(Rectangle())

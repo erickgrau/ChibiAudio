@@ -45,6 +45,8 @@ struct PlaylistsView: View {
                 }
             }
             .navigationTitle("Playlists")
+            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .refreshable {
                 library.refreshPlaylistsFromDisk()
             }
@@ -67,6 +69,8 @@ struct PlaylistsView: View {
             } message: {
                 Text("Enter a name for the new playlist.")
             }
+            .chibiCanvas()
+            .tint(ChibiTheme.amber)
         }
     }
 
@@ -103,9 +107,18 @@ struct PlaylistsView: View {
                 Text(playlist.name)
                     .font(.callout)
                     .fontWeight(.medium)
+                    .foregroundStyle(ChibiTheme.textPrimary)
                 Text("\(max(playlist.entries.count, playlist.trackURLs.count)) item\(max(playlist.entries.count, playlist.trackURLs.count) == 1 ? "" : "s")\(playlist.isAppOwned ? " · Mixed" : "")")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ChibiTheme.textSecondary)
+                if playlist.isAppOwned {
+                    HStack(spacing: 6) {
+                        SourceChip(kind: .onDevice)
+                        SourceChip(kind: .plex)
+                        SourceChip(kind: .radio)
+                    }
+                    .scaleEffect(0.85, anchor: .leading)
+                }
             }
         }
         .padding(.vertical, 2)
