@@ -13,7 +13,8 @@ struct PlexBrowserView: View {
                 Section {
                     Text("Add your Plex Media Server URL and X-Plex-Token under Settings → Plex. Basic LAN streaming of your own library does not require Plex Pass.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                    SourceChip(kind: .plex)
                 }
             } else {
                 Section("Music Libraries") {
@@ -58,6 +59,10 @@ struct PlexBrowserView: View {
             }
         }
         .navigationTitle("Plex")
+        .chibiListChrome()
+        .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .tint(ChibiTheme.amber)
         .task {
             if client.isConfigured {
                 await client.refreshMusicLibraries()

@@ -25,6 +25,8 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle("Library")
+            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     sortMenu
@@ -34,6 +36,7 @@ struct LibraryView: View {
                         showSettings = true
                     } label: {
                         Image(systemName: "gear")
+                            .foregroundStyle(ChibiTheme.textPrimary)
                             .overlay(alignment: .topTrailing) {
                                 if crashReportingEnabled, crashService.hasPendingCrash {
                                     Circle()
@@ -55,6 +58,7 @@ struct LibraryView: View {
             .refreshable {
                 await library.rescan()
             }
+            .chibiCanvas()
         }
     }
 
@@ -81,15 +85,22 @@ struct LibraryView: View {
 
             Image(systemName: "music.note.house")
                 .font(.system(size: 64))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ChibiTheme.amber.opacity(0.85))
 
             Text("Welcome to ChibiAudio")
-                .font(.title2.bold())
+                .font(ChibiTheme.heroTitleFont())
+                .foregroundStyle(ChibiTheme.textPrimary)
 
             Text("Select a folder on this iPhone, iCloud Drive, or another Files provider (e.g. Google Drive) to build your library — plays fully offline once files are local.")
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ChibiTheme.textSecondary)
                 .padding(.horizontal, 32)
+
+            HStack(spacing: 8) {
+                SourceChip(kind: .onDevice)
+                SourceChip(kind: .iCloud)
+                SourceChip(kind: .drive)
+            }
 
             Button {
                 showFolderPicker = true
@@ -99,6 +110,7 @@ struct LibraryView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .tint(ChibiTheme.amber)
             .controlSize(.large)
             .padding(.horizontal, 48)
 
@@ -216,6 +228,7 @@ struct LibraryView: View {
         .listStyle(.plain)
         .listSectionSpacing(.compact)
         .environment(\.defaultMinListRowHeight, 0)
+        .chibiListChrome()
         .contentMargins(.bottom, 80, for: .scrollContent)
     }
 }
@@ -291,11 +304,11 @@ struct TrackRow: View {
                             hasArtwork: track.hasArtwork,
                             pointSize: 52)
                     .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 if isCurrent {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(.black.opacity(0.4))
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(.black.opacity(0.45))
                         .frame(width: 52, height: 52)
                     if isActivelyPlaying {
                         NowPlayingBars()
@@ -309,19 +322,20 @@ struct TrackRow: View {
                     .font(.callout)
                     .fontWeight(.medium)
                     .lineLimit(1)
-                    .foregroundColor(isCurrent ? Color.accentColor : .primary)
+                    .foregroundStyle(isCurrent ? ChibiTheme.amber : ChibiTheme.textPrimary)
                 Text(track.artist)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ChibiTheme.textSecondary)
                     .lineLimit(1)
             }
 
             Spacer()
 
+            SourceChip(kind: MediaSourceKind.infer(from: track.url))
+
             Text(formatDuration(track.duration))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .monospacedDigit()
+                .font(ChibiTheme.sampleRateFont())
+                .foregroundStyle(ChibiTheme.textTertiary)
         }
         .padding(.vertical, 2)
     }

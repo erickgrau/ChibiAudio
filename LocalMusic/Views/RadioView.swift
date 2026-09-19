@@ -14,7 +14,8 @@ struct RadioView: View {
                 Section {
                     Text("Free Icecast / Shoutcast-style streams. Paste any http(s) stream URL. Not a paid catalog.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                    SourceChip(kind: .radio)
                 }
 
                 Section("Stations") {
@@ -22,12 +23,17 @@ struct RadioView: View {
                         Button {
                             play(station)
                         } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(station.name)
-                                    .foregroundStyle(.primary)
-                                Text(station.genre)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(station.name)
+                                        .foregroundStyle(ChibiTheme.textPrimary)
+                                    Text(station.genre)
+                                        .font(.caption)
+                                        .foregroundStyle(ChibiTheme.textSecondary)
+                                }
+                                Spacer()
+                                Image(systemName: "play.circle.fill")
+                                    .foregroundStyle(ChibiTheme.amber)
                             }
                         }
                         .contextMenu {
@@ -39,6 +45,8 @@ struct RadioView: View {
                 }
             }
             .navigationTitle("Radio")
+            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -54,6 +62,8 @@ struct RadioView: View {
                 Button("Add") { addCustom() }
                 Button("Cancel", role: .cancel) {}
             }
+            .chibiListChrome()
+            .tint(ChibiTheme.amber)
         }
     }
 
