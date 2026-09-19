@@ -20,9 +20,9 @@ struct FolderScanResult: Sendable {
 
 struct MetadataLoader {
 
-    static let supportedExtensions: Set<String> = [
-        "mp3", "m4a", "aac", "wav", "aiff", "aif", "flac", "caf", "opus"
-    ]
+    /// Audio extensions accepted into the library. Playability is decided by
+    /// `CodecRouter` (native vs needs-decode vs DSD) at playback time.
+    static let supportedExtensions: Set<String> = CodecRouter.libraryExtensions
 
     static let playlistExtensions: Set<String> = [
         "m3u", "m3u8", "pls"
@@ -425,16 +425,41 @@ struct MetadataLoader {
         let baseDir = url.deletingLastPathComponent()
         let name = url.deletingPathExtension().lastPathComponent
 
-        let entries: [(rawPath: String, url: URL)]
+        let pairs: [(rawPath: String, url: URL)]
         if ext == "pls" {
-            entries = parsePLS(content, baseDir: baseDir)
+            pairs = parsePLS(content, baseDir: baseDir)
         } else {
-            entries = parseM3U(content, baseDir: baseDir)
+            pairs = parseM3U(content, baseDir: baseDir)
         }
 
-        return Playlist(fileURL: url, name: name,
-                        trackURLs: entries.map(\.url),
-                        rawPaths: entries.map(\.rawPath))
+        var entries: [PlaylistEntry] = []
+        var trackURLs: [URL] = []
+        var rawPaths: [String] = []
+        for pair in pairs {
+            if pair.url.isFileURL {
+                trackURLs.append(pair.url)
+                rawPaths.append(pair.rawPath)
+                entries.append(PlaylistEntry(source: .localFile(
+                    urlString: pair.url.absoluteString,
+                    displayPath: pair.rawPath
+                )))
+            } else {
+                let title = pair.url.host ?? pair.rawPath
+                entries.append(PlaylistEntry(source: .stream(
+                    urlString: pair.url.absoluteString,
+                    title: title,
+                    artist: "Stream"
+                )))
+            }
+        }
+
+        return Playlist(
+            fileURL: url,
+            name: name,
+            entries: entries,
+            trackURLs: trackURLs,
+            rawPaths: rawPaths
+        )
     }
 
     private static func parseM3U(_ content: String, baseDir: URL) -> [(rawPath: String, url: URL)] {
@@ -469,9 +494,9 @@ struct MetadataLoader {
 
     static func resolveTrackPath(_ path: String, baseDir: URL) -> URL? {
         guard !path.isEmpty else { return nil }
-        // Skip URLs (http://, https://)
-        if path.lowercased().hasPrefix("http://") || path.lowercased().hasPrefix("https://") {
-            return nil
+        let lower = path.lowercased()
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") {
+            return URL(string: path)
         }
         let url: URL
         if path.hasPrefix("/") {
@@ -487,14 +512,20 @@ struct MetadataLoader {
     // MARK: - Playlist Writing
 
     static func writePlaylist(_ playlist: Playlist) {
+        // App-owned unified playlists persist as JSON (multi-source).
+        if playlist.isAppOwned {
+            AppPlaylistStore.save(playlist)
+            return
+        }
+
         let ext = playlist.fileURL.pathExtension.lowercased()
         let baseDir = playlist.fileURL.deletingLastPathComponent()
         let content: String
 
         if ext == "pls" {
-            content = buildPLS(trackURLs: playlist.trackURLs, baseDir: baseDir)
+            content = buildPLS(playlist: playlist, baseDir: baseDir)
         } else {
-            content = buildM3U(trackURLs: playlist.trackURLs, baseDir: baseDir)
+            content = buildM3U(playlist: playlist, baseDir: baseDir)
         }
 
         do {
@@ -508,7 +539,13 @@ struct MetadataLoader {
         let baseName = sanitizedPlaylistBaseName(name)
         let fileURL = uniquePlaylistFileURL(baseName: baseName, in: directory)
         let displayName = fileURL.deletingPathExtension().lastPathComponent
-        let playlist = Playlist(fileURL: fileURL, name: displayName, trackURLs: [], rawPaths: [])
+        let playlist = Playlist(
+            fileURL: fileURL,
+            name: displayName,
+            entries: [],
+            trackURLs: [],
+            rawPaths: []
+        )
         let content = "#EXTM3U\n"
         do {
             try content.write(to: fileURL, atomically: true, encoding: .utf8)
@@ -516,6 +553,11 @@ struct MetadataLoader {
             Log.persistence.error("Failed to create playlist \(fileURL.lastPathComponent): \(error.localizedDescription)")
         }
         return playlist
+    }
+
+    /// App-owned multi-source playlist (Documents), not tied to the music folder.
+    static func createAppOwnedPlaylist(name: String) -> Playlist {
+        AppPlaylistStore.create(name: name)
     }
 
     /// Replaces `/` and `:` and strips `..` so `appendingPathComponent`
@@ -553,21 +595,61 @@ struct MetadataLoader {
         return trackPath
     }
 
-    private static func buildM3U(trackURLs: [URL], baseDir: URL) -> String {
+    private static func buildM3U(playlist: Playlist, baseDir: URL) -> String {
         var lines = ["#EXTM3U"]
-        for url in trackURLs {
-            lines.append(relativePath(for: url, relativeTo: baseDir))
+        if playlist.entries.isEmpty {
+            for url in playlist.trackURLs {
+                lines.append(relativePath(for: url, relativeTo: baseDir))
+            }
+        } else {
+            for entry in playlist.entries {
+                switch entry.source {
+                case .localFile(let urlString, let displayPath):
+                    if let url = URL(string: urlString), url.isFileURL {
+                        lines.append(relativePath(for: url, relativeTo: baseDir))
+                    } else {
+                        lines.append(displayPath)
+                    }
+                case .stream(let urlString, let title, let artist):
+                    lines.append("#EXTINF:-1,\(artist) - \(title)")
+                    lines.append(urlString)
+                case .plex(_, _, let title, let artist, _, _):
+                    lines.append("#EXTINF:-1,\(artist) - \(title) (Plex — open in ChibiAudio)")
+                case .appleMusic(_, let title, let artist):
+                    lines.append("#EXTINF:-1,\(artist) - \(title) (Apple Music — needs subscription)")
+                }
+            }
         }
         return lines.joined(separator: "\n") + "\n"
     }
 
-    private static func buildPLS(trackURLs: [URL], baseDir: URL) -> String {
+    private static func buildPLS(playlist: Playlist, baseDir: URL) -> String {
         var lines = ["[playlist]"]
-        for (i, url) in trackURLs.enumerated() {
-            let num = i + 1
-            lines.append("File\(num)=\(relativePath(for: url, relativeTo: baseDir))")
+        var num = 0
+        let exportables: [(String, String)] = {
+            if !playlist.entries.isEmpty {
+                return playlist.entries.compactMap { entry in
+                    switch entry.source {
+                    case .localFile(let urlString, _):
+                        guard let url = URL(string: urlString) else { return nil }
+                        return (relativePath(for: url, relativeTo: baseDir), entry.source.displayTitle)
+                    case .stream(let urlString, let title, _):
+                        return (urlString, title)
+                    default:
+                        return nil
+                    }
+                }
+            }
+            return playlist.trackURLs.map {
+                (relativePath(for: $0, relativeTo: baseDir), $0.deletingPathExtension().lastPathComponent)
+            }
+        }()
+        for (path, title) in exportables {
+            num += 1
+            lines.append("File\(num)=\(path)")
+            lines.append("Title\(num)=\(title)")
         }
-        lines.append("NumberOfEntries=\(trackURLs.count)")
+        lines.append("NumberOfEntries=\(num)")
         lines.append("Version=2")
         return lines.joined(separator: "\n") + "\n"
     }

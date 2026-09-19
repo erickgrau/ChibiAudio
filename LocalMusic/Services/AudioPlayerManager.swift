@@ -95,20 +95,43 @@ final class AudioPlayerManager {
 
     // MARK: - Audio Session
 
-    private func configureAudioSession() {
+    private func configureAudioSession(trackSampleRate: Double? = nil) {
+        let dacMode = UserDefaults.standard.bool(forKey: DACSession.dacModeDefaultsKey)
+        let enable = DACSession.shouldEnableDACPath(userEnabled: dacMode)
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try DACSession.configure(dacMode: enable, trackSampleRate: trackSampleRate)
+            let route = DACSession.currentRouteInfo()
+            if enable {
+                Log.player.info(
+                    "DAC mode · \(route.summary) · preferred=\(Int(route.preferredSampleRate))Hz"
+                )
+            }
+            EqualizerController.shared.noteDACModeChanged()
         } catch {
             Log.player.error("Failed to configure audio session: \(error.localizedDescription)")
         }
     }
 
-    private func activateAudioSession() {
+    private func activateAudioSession(trackSampleRate: Double? = nil) {
+        configureAudioSession(trackSampleRate: trackSampleRate)
         do {
-            try AVAudioSession.sharedInstance().setActive(true)
+            try DACSession.activate()
         } catch {
             Log.player.error("Failed to activate audio session: \(error.localizedDescription)")
         }
+    }
+
+    /// Call from Settings when Hi-res/DAC mode toggles.
+    func reloadAudioSessionPreference() {
+        configureAudioSession()
+        if isPlaying {
+            activateAudioSession()
+        }
+    }
+
+    /// Latest output route summary for Settings / Now Playing (THX Onyx when USB).
+    var audioRouteSummary: String {
+        DACSession.currentRouteInfo().summary
     }
 
     /// Apple's interruption and route-change articles observe via
@@ -415,7 +438,62 @@ final class AudioPlayerManager {
         statusObserver?.invalidate()
         statusObserver = nil
 
-        activateAudioSession()
+        // HTTP(S) streams (radio / Plex) — AVPlayer handles them; skip file codec table.
+        if !track.url.isFileURL {
+            currentTrack = track
+            duration = track.duration
+            currentTime = 0
+            updateNowPlayingInfo()
+            finishLoadAndPlay(track, trackSampleRate: nil)
+            return
+        }
+
+        let path = CodecRouter.playPath(forFileURL: track.url)
+        switch path {
+        case .native:
+            break
+        case .needsDecode:
+            Log.player.error("Skipping \(track.url.lastPathComponent) — needs external decode (OGG/Opus/WV); native AVFoundation path unavailable")
+            currentTrack = track
+            handleLoadFailure()
+            return
+        case .dsd:
+            // THX Onyx supports DSD; free v1 prefers DoP but the encoder isn’t shipped yet.
+            // Never silently transcode to low-rate MP3/AAC.
+            let strategy = DSDRouter.strategy(forFileExtension: track.url.pathExtension)
+            if strategy == .dop, !DSDRouter.dopImplementedInFreeV1 {
+                Log.player.error(
+                    "DSD \(track.url.lastPathComponent) — DoP-to-USB intended for THX Onyx; DoP encoder not in free v1 (refusing lossy fall-back)"
+                )
+                currentTrack = track
+                handleLoadFailure()
+                return
+            }
+            Log.player.error("Skipping DSD \(track.url.lastPathComponent) — unavailable")
+            currentTrack = track
+            handleLoadFailure()
+            return
+        }
+
+        currentTrack = track
+        duration = track.duration
+        currentTime = 0
+        updateNowPlayingInfo()
+
+        Task { [weak self] in
+            await CloudFileAccess.prepareForPlayback(at: track.url)
+            let probedRate = await DACSession.probeSampleRate(of: track.url)
+            await MainActor.run {
+                self?.finishLoadAndPlay(track, trackSampleRate: probedRate)
+            }
+        }
+    }
+
+    private func finishLoadAndPlay(_ track: Track, trackSampleRate: Double? = nil) {
+        // Another track may have been requested while we waited on cloud I/O.
+        guard currentTrack?.id == track.id else { return }
+
+        activateAudioSession(trackSampleRate: trackSampleRate)
 
         let item = AVPlayerItem(url: track.url)
 
@@ -425,10 +503,6 @@ final class AudioPlayerManager {
             player?.replaceCurrentItem(with: item)
         }
 
-        currentTrack = track
-        duration = track.duration
-        currentTime = 0
-
         // Wait for the item to be ready before playing.
         //
         // The KVO callback runs on a background thread; hop to MainActor and
@@ -436,6 +510,7 @@ final class AudioPlayerManager {
         // rapid track changes can leave a queued .readyToPlay block in flight
         // after we've moved on.
         let observedItemRef = ObjectIdentifier(item)
+        statusObserver?.invalidate()
         statusObserver = item.observe(\.status, options: [.initial, .new]) { [weak self] observedItem, _ in
             let status = observedItem.status
             let errorDescription = observedItem.error.map { String(describing: $0) } ?? "nil"
@@ -462,6 +537,10 @@ final class AudioPlayerManager {
 
         addTimeObserver()
 
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            self.endObserver = nil
+        }
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,
