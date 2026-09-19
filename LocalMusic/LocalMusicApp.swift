@@ -36,6 +36,13 @@ struct LocalMusicApp: App {
                         Label("Playlists", systemImage: "rectangle.stack.fill")
                     }
                     .tag(2)
+
+                RadioView()
+                    .miniPlayer { selectedTab = 1 }
+                    .tabItem {
+                        Label("Radio", systemImage: "dot.radiowaves.left.and.right")
+                    }
+                    .tag(3)
             }
             .environment(player)
             .environment(library)

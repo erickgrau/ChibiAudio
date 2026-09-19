@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(AudioPlayerManager.self) private var player
 
     private static let forkURL = URL(string: "https://github.com/erickgrau/ChibiAudio")!
     private static let upstreamURL = URL(string: "https://github.com/j23n/localmusic")!
@@ -15,12 +16,15 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showFolderPicker = false
     @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
+    @AppStorage(DACSession.dacModeDefaultsKey) private var dacModeEnabled = false
+    @State private var plexServer = PlexClient.shared.serverURLString
+    @State private var plexToken = PlexClient.shared.token
     private let crashService = CrashDiagnosticsService.shared
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Music Folder") {
+                Section {
                     Button {
                         showFolderPicker = true
                     } label: {
@@ -63,6 +67,47 @@ struct SettingsView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Music Folder")
+                } footer: {
+                    Text("Pick On My iPhone, app Documents, iCloud Drive, or Google Drive (install the Drive app and enable it under Files). Bookmarks persist; cloud files download-to-play when the provider supports it.")
+                }
+
+                Section {
+                    Toggle("Hi-res / DAC mode", isOn: $dacModeEnabled)
+                    LabeledContent("Output", value: player.audioRouteSummary)
+                    NavigationLink("Equalizer") {
+                        EqualizerView()
+                    }
+                } header: {
+                    Text("Audio · THX Onyx")
+                } footer: {
+                    Text("Reference DAC: THX Onyx (ESS ES9281PRO). DAC mode maximizes preferred sample rate for USB and forces EQ off for a cleaner bit-perfect PCM path. MQA = hardware renderer on the Onyx — no software MQA decode in free ChibiAudio. DSD prefers DoP (encoder not in free v1 yet; never silent lossy fall-back).")
+                }
+                .onChange(of: dacModeEnabled) { _, _ in
+                    player.reloadAudioSessionPreference()
+                }
+
+                Section {
+                    TextField("Server URL (http://…:32400)", text: $plexServer)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    SecureField("X-Plex-Token", text: $plexToken)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Button("Save Plex Settings") {
+                        let client = PlexClient.shared
+                        client.serverURLString = plexServer.trimmingCharacters(in: .whitespacesAndNewlines)
+                        client.token = plexToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                    }
+                    NavigationLink("Browse Plex Music") {
+                        PlexBrowserView()
+                    }
+                } header: {
+                    Text("Plex")
+                } footer: {
+                    Text("Personal PMS only. Create a token at plex.tv/claim or from account XML. LAN direct play of your library works without Plex Pass; some remote features may need Pass.")
                 }
 
                 Section("Stats") {
@@ -93,7 +138,7 @@ struct SettingsView: View {
 
                 Section("About") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("ChibiAudio is a fork of LocalMusic. Local and cloud folders are primary; free internet radio is built-in. Apple Music catalogue search is optional and requires a paid Apple Music subscription.")
+                        Text("ChibiAudio is a free fork of LocalMusic. Local/cloud folders and app-owned mixed playlists need no subscription. Apple Music catalog play (optional later) needs Apple Music.")
                             .font(.callout)
 
                         Text("Based on open-source LocalMusic (MPL-2.0). Found a bug or have feedback?")
@@ -154,6 +199,10 @@ struct SettingsView: View {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { crashService.refreshPendingCrash() }
+            }
+            .onAppear {
+                plexServer = PlexClient.shared.serverURLString
+                plexToken = PlexClient.shared.token
             }
         }
     }
