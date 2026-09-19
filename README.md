@@ -1,57 +1,60 @@
 # ChibiAudio
 
-**Free** personal iOS music player — a fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
+**Free v1** personal iOS music player — a fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
 
-LocalMusic’s architecture is intact under `LocalMusic/` (folder picker, bookmarks, scan, AVPlayer queue, lyrics, lock screen). ChibiAudio adds branding, USB DAC / THX Onyx focus, multi-source playlists, Plex, free radio, and EQ.
+LocalMusic architecture stays under `LocalMusic/` (folder picker, security-scoped bookmarks, library scan, AVPlayer queue, lyrics, lock screen / Now Playing). ChibiAudio layers branding and the locked free-v1 extras below.
 
-See [NOTICE](NOTICE) for upstream attribution.
+See [NOTICE](NOTICE) for upstream attribution. No IAP / paywall.
+
+## Free v1 — Soft PASS lock
+
+| Capability | Free v1 |
+|---|---|
+| Offline On My iPhone / app Documents via Files + security-scoped bookmarks | Yes (upstream) |
+| iCloud Drive / Google Drive folders via system Files picker + bookmarks | Yes |
+| Lossless / hi-res PCM (FLAC, ALAC, WAV, AIFF, high-bitrate AAC/M4A, MP3) native AVFoundation | Yes |
+| DSD (`.dsf`/`.dff`) — DoP preferred; never silent lossy fall-back | Policy yes; DoP encoder not bundled yet (refuse play vs crush) |
+| THX Onyx bit-perfect PCM (USB route, Hi-res/DAC mode, EQ bypass) | Yes |
+| Cross-source app-owned playlists (local/cloud + Plex + radio; AM IDs gated) | Yes |
+| Plex personal library — prefer direct/original stream | Yes (LAN/token) |
+| Graphic EQ with presets; **bypassed** when bit-perfect / DAC mode | Yes (settings + bypass; float-PCM engine insert optional follow-up) |
+| Embedded + synced lyrics, background audio, lock screen | Yes (upstream) |
+| Free internet radio (Icecast/Shoutcast URL + curated list) | Yes |
+| Apple Music *catalog* play | Optional / gated — needs user Apple Music sub; not free streaming |
+| MQA | Onyx **renderer** passthrough only — **no** licensed MQA Core decoder |
+| IAP / paywall | None |
+
+Out of free v1: Spotify / YouTube Music–style catalogs; visual redesign; App Store submit.
 
 ## Sources matrix
 
-| Source | Free? | Status |
+| Source | Free? | Notes |
 |---|---|---|
-| **On My iPhone / app Documents** (Files folder picker + security-scoped bookmarks) | Yes | Core (upstream) |
-| **iCloud Drive** folders via Files | Yes | Core — pick folder, bookmark, re-scan; download-to-play when ubiquitous |
-| **Google Drive** folders via Files provider | Yes | Same picker — install Google Drive, enable under Files → Browse |
-| **App-owned mixed playlists** (local + Plex + radio in one list) | Yes | Free — no subscription to mix *our* playlist DB |
-| **Free internet radio** (Icecast/Shoutcast URL + curated SomaFM-style list) | Yes | Radio tab |
-| **Plex Media Server** (your music library, token auth, LAN stream) | Yes* | Settings → Plex — *basic local stream; some remote/Plexamp features may need Plex Pass |
-| **Apple Music catalog** | Needs **Apple Music** sub to *play* catalog | Optional later (`MusicSubscription.canPlayCatalogContent`); not free streaming |
-| Spotify / YouTube Music–style catalogs | Not free for third-party players | Out of free v1 |
+| On My iPhone / Documents | Yes | Files folder picker + bookmarks; plays fully offline |
+| iCloud Drive | Yes | Same picker; download-to-play when ubiquitous |
+| Google Drive (Files provider) | Yes | Install Drive app → enable in Files → pick folder |
+| App-owned mixed playlists | Yes | No sub to mix offline + Plex + radio in *our* DB |
+| Free radio (Icecast / Shoutcast URL) | Yes | Radio tab |
+| Plex Media Server (your library) | Yes* | Token + LAN stream; *some remote/Plexamp features may need Plex Pass |
+| Apple Music catalog | Sub required to *play* | Optional later; gated on `canPlayCatalogContent` |
+| Spotify / YT Music catalogs | No | Out of free v1 |
 
-### Research lock (licensing honesty)
+### Research lock
 
-- **App-owned mixed playlists = free.** Offline + Plex + radio in ChibiAudio’s playlist store needs no sub.
-- **Apple Music catalog play** requires the user’s Apple Music subscription. Without it: library/purchased only; catalog rows show “needs Apple Music.” MusicKit can ship; playback is gated.
-- **Plex personal music:** PMS + basic stream of *your* library works for local/LAN use without Plex Pass. Document remote/Pass caveats.
-- **No IAP / paywall** in free v1. Subscription catalogs stay optional later.
+- App-owned mixed playlists = free.
+- Apple Music catalog play needs the user’s Apple Music subscription.
+- Plex: basic stream of *your* PMS library on LAN does not require Plex Pass; remote/Pass caveats apply.
+- No IAP. No pretending paid catalogs are free.
 
 ## Hardware — THX Onyx (reference DAC)
 
-Erick’s DAC: **THX Onyx Portable Headphone Amplifier**
+**THX Onyx Portable Headphone Amplifier** — ESS **ES9281PRO**, THX AAA, **MQA Renderer**, DSD, USB.
 
-- Chip: ESS **ES9281PRO**
-- THX AAA amp
-- **MQA Renderer** (hardware final unfold — not a full software MQA decoder)
-- **DSD** support
-- USB for iPhone / PC
-
-### What free ChibiAudio does
-
-1. Detects external **USB audio** route; UI labels **“THX Onyx / USB DAC”** (or the port name if it already says Onyx/THX).
-2. **PCM:** prefers bit-perfect; sets `AVAudioSession` preferred sample rate from the track or up to ~192 kHz — **does not crush to 48 kHz**. Actual rate is whatever iOS + Onyx negotiate (`current` / `preferred` shown in Settings & Now Playing).
-3. **DSD (.dsf/.dff):** prefers **DoP** over USB when native DSD isn’t available via AVFoundation. DoP encoder is **not** shipped in free v1 yet — we **refuse** silent lossy fall-back (never destroy to low-rate MP3).
-4. **MQA:** passthrough / renderer-friendly to the Onyx. **No licensed MQA Core software decoder** in free ChibiAudio.
-5. Settings **Hi-res / DAC mode** — maximize preferred rate; **forces EQ off** for a cleaner path to the Onyx.
-
-## Paid-app parity (what’s free here vs needs a sub)
-
-| Capability | ChibiAudio free |
-|---|---|
-| Offline folders, cloud folder libs (iCloud/Drive), lossless native PCM, lyrics, lock screen | Yes |
-| USB DAC hi-res path (THX Onyx) | Yes (PCM; DSD DoP pending) |
-| Mixed playlists, free radio, personal Plex | Yes |
-| Apple Music *catalog* streaming | Needs Apple Music sub (optional later) |
+1. Detect USB audio; label **THX Onyx / USB DAC** (or port name if it already says Onyx/THX).
+2. **PCM:** bit-perfect intent; preferred sample rate from track or up to ~192 kHz — **no 48 kHz crush**. Show negotiated rate in Settings / Now Playing.
+3. **DSD:** DoP over USB preferred; free v1 refuses silent MP3/AAC fall-back if DoP isn’t available yet.
+4. **MQA:** hardware renderer on the Onyx only — no licensed software MQA Core decode.
+5. **Hi-res / DAC mode** maximizes preferred rate and **forces EQ off**.
 
 ## Build
 
@@ -62,20 +65,20 @@ open LocalMusic.xcodeproj
 ```
 
 - Xcode 16+, iOS 18+, Swift 6
-- Set your Team under Signing & Capabilities (team ID field is left empty in project.yml on purpose)
+- Set your Team under Signing & Capabilities (team ID left empty in `project.yml` on purpose)
 - Bundle ID: `com.chibitek.ChibiAudio` · Display name: **ChibiAudio**
-- Module/target remains `LocalMusic` so upstream structure stays recognizable
+- Xcode target/module name remains `LocalMusic` (upstream layout)
 
-### Plex token setup
+### Plex token
 
-1. Sign in at [plex.tv](https://www.plex.tv) → account → authorize devices / XML for `X-Plex-Token`, or use your server’s settings.
-2. Settings → Plex → server URL like `http://192.168.x.x:32400` + token → Save → Browse Plex Music.
-3. Prefer LAN. `NSAllowsLocalNetworking` is enabled for local HTTP PMS.
+1. Obtain `X-Plex-Token` from your Plex account / server.
+2. Settings → Plex → `http://…:32400` + token → Browse Plex Music.
+3. Prefer LAN (`NSAllowsLocalNetworking` enabled).
 
 ### Google Drive / iCloud
 
-1. Install the provider app (Drive) if needed → Files → Browse → enable under More Locations.
-2. In ChibiAudio: choose folder via the system document picker.
+1. Enable the provider under Files → Browse.
+2. ChibiAudio → choose folder via document picker.
 3. Re-scan after adding files; cloud placeholders download-to-play when possible.
 
 ## Architecture (still localmusic)
@@ -85,21 +88,16 @@ open LocalMusic.xcodeproj
 | `LocalMusicApp` | Tabs: Library, Now Playing, Playlists, Radio |
 | `AudioPlayerManager` | AVPlayer queue, remote commands, DAC session, cloud prep |
 | `CodecRouter` / `DACSession` / `DSDRouter` | Format matrix + THX Onyx USB path |
-| `EqualizerController` | 10-band EQ UI + presets; **forced off** in DAC bit-perfect mode. Float-PCM `AVAudioEngine` insert is the next step (AVPlayer path stays clean when Flat/DAC) |
-| `Playlist` + `PlaylistSourceRef` | Multi-source entries (file / stream / Plex / Apple Music stub) |
-| `AppPlaylistStore` | App-owned JSON playlists in Documents |
-| `PlexClient` | PMS sections + direct/stream URLs |
-| `RadioCatalog` | Curated + user Icecast URLs |
+| `EqualizerController` | 10-band EQ + presets; forced off in DAC bit-perfect mode |
+| `Playlist` + `PlaylistSourceRef` | Multi-source entries |
+| `AppPlaylistStore` | App-owned JSON playlists |
+| `PlexClient` | PMS sections + prefer-original stream URLs |
+| `RadioCatalog` | Curated + user stream URLs |
 | `MetadataLoader` / `PersistenceManager` / lyrics / artwork | Upstream |
 
-## Changelog vs upstream localmusic
+## Changelog vs upstream
 
-- Rebrand display name / bundle to ChibiAudio; NOTICE + upstream credit
-- CodecRouter format matrix; CloudFileAccess download-to-play
-- THX Onyx–oriented DAC mode, route UI, MQA/DSD policy
-- Unified multi-source playlists (app-owned JSON + m3u http URLs)
-- Free Radio tab; Plex browse/stream; graphic EQ UI (bit-perfect aware; engine insert TBD)
-- README sources matrix + research lock + hardware section
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
