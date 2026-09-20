@@ -83,6 +83,20 @@ final class LyricsCacheTests {
         #expect(loaded == nil)
     }
 
+    @Test func loadOrDiscover_readsSiblingLRCWhenCacheMissing() async throws {
+        let album = tempDir.appendingPathComponent("DiscoverAlbum", isDirectory: true)
+        try FileManager.default.createDirectory(at: album, withIntermediateDirectories: true)
+        let track = album.appendingPathComponent("song.mp3")
+        FileManager.default.createFile(atPath: track.path, contents: Data([0x00]))
+        let lrc = album.appendingPathComponent("song.lrc")
+        try "[00:03.00]From discover\n".write(to: lrc, atomically: true, encoding: .utf8)
+
+        #expect(!LyricsCache.hasLyrics(for: track))
+        let loaded = try #require(await LyricsCache.loadOrDiscover(for: track))
+        #expect(loaded.synced?.first?.text == "From discover")
+        #expect(LyricsCache.hasLyrics(for: track), "discover should persist into LyricsCache")
+    }
+
     // MARK: - remove
 
     @Test func remove_deletesDiskFile() async throws {

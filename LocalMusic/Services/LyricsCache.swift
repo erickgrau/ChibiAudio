@@ -106,6 +106,20 @@ enum LyricsCache {
         return try? JSONDecoder().decode(TrackLyrics.self, from: data)
     }
 
+    /// Soft PASS resolve: disk cache first, then sibling `.lrc` (and stores on hit).
+    static func loadOrDiscover(for trackURL: URL) async -> TrackLyrics? {
+        if let cached = await load(for: trackURL), !cached.isEmpty {
+            return cached
+        }
+        guard trackURL.isFileURL else { return nil }
+        let discovered = await Task.detached(priority: .userInitiated) {
+            MetadataLoader.loadSidecarLyrics(beside: trackURL)
+        }.value
+        guard let discovered, !discovered.isEmpty else { return nil }
+        storeSync(discovered, for: trackURL)
+        return discovered
+    }
+
     static func purgeMemoryCache() {
         memoryCache.removeAllObjects()
     }

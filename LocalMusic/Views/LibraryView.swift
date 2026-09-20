@@ -242,6 +242,7 @@ private struct TrackRowButton: View {
     let track: Track
     @Environment(LibraryStore.self) private var library
     @Environment(AudioPlayerManager.self) private var player
+    @State private var showAddToPlaylist = false
 
     var body: some View {
         Button {
@@ -255,25 +256,15 @@ private struct TrackRowButton: View {
                      isActivelyPlaying: player.isPlaying && player.currentTrack?.id == track.id)
         }
         .contextMenu {
-            if !library.playlists.isEmpty {
-                Menu("Add to Playlist") {
-                    ForEach(library.playlists) { playlist in
-                        Button(playlist.name) {
-                            addTrack(track, to: playlist)
-                        }
-                    }
-                }
+            Button {
+                showAddToPlaylist = true
+            } label: {
+                Label("Add to Playlist", systemImage: "text.badge.plus")
             }
         }
-    }
-
-    private func addTrack(_ track: Track, to playlist: Playlist) {
-        guard let idx = library.playlists.firstIndex(where: { $0.id == playlist.id }) else { return }
-        var updated = library.playlists[idx]
-        let baseDir = updated.fileURL.deletingLastPathComponent()
-        let display = MetadataLoader.relativePath(for: track.url, relativeTo: baseDir)
-        updated.appendLocal(url: track.url, displayPath: display)
-        library.savePlaylist(updated)
+        .sheet(isPresented: $showAddToPlaylist) {
+            AddToPlaylistSheet(payload: .local(track))
+        }
     }
 }
 

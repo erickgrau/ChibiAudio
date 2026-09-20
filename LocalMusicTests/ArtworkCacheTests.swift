@@ -179,6 +179,38 @@ final class ArtworkCacheTests {
         #expect(ArtworkCache.hasArtwork(for: url), "disk cache should survive purge")
     }
 
+    // MARK: - Folder artwork Soft PASS
+
+    @Test func discoverFolderArtwork_findsCoverJpgBesideTrack() throws {
+        let albumDir = tempDir.appendingPathComponent("Album", isDirectory: true)
+        try FileManager.default.createDirectory(at: albumDir, withIntermediateDirectories: true)
+        let track = albumDir.appendingPathComponent("song.flac")
+        FileManager.default.createFile(atPath: track.path, contents: Data([0x00]))
+        let cover = albumDir.appendingPathComponent("cover.jpg")
+        try writePNG(width: 8, height: 8, to: cover)
+
+        let data = try #require(ArtworkCache.discoverFolderArtwork(beside: track))
+        #expect(!data.isEmpty)
+    }
+
+    @Test func ensureArtworkAvailable_storesFolderArtWhenMissing() throws {
+        let albumDir = tempDir.appendingPathComponent("Album2", isDirectory: true)
+        try FileManager.default.createDirectory(at: albumDir, withIntermediateDirectories: true)
+        let track = albumDir.appendingPathComponent("tune.mp3")
+        FileManager.default.createFile(atPath: track.path, contents: Data([0x00]))
+        try writePNG(width: 6, height: 6, to: albumDir.appendingPathComponent("folder.png"))
+
+        #expect(!ArtworkCache.hasArtwork(for: track))
+        #expect(ArtworkCache.ensureArtworkAvailable(for: track))
+        #expect(ArtworkCache.hasArtwork(for: track))
+    }
+
+    @Test func discoverFolderArtwork_returnsNilWithoutSidecar() {
+        let track = tempDir.appendingPathComponent("lonely.mp3")
+        FileManager.default.createFile(atPath: track.path, contents: Data([0x00]))
+        #expect(ArtworkCache.discoverFolderArtwork(beside: track) == nil)
+    }
+
     // MARK: - Helpers
 
     /// Writes a solid-color PNG to `url`. Uses UIGraphicsImageRenderer so the
