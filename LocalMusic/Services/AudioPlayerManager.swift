@@ -281,6 +281,7 @@ final class AudioPlayerManager {
         player.play()
         isPlaying = true
         updateNowPlayingElapsed()
+        syncVisualizerAnalyzer()
     }
 
     /// Pause playback. Idempotent: never resumes.
@@ -289,6 +290,7 @@ final class AudioPlayerManager {
         player.pause()
         isPlaying = false
         updateNowPlayingElapsed()
+        syncVisualizerAnalyzer()
     }
 
     func togglePlayPause() {
@@ -320,6 +322,7 @@ final class AudioPlayerManager {
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
         currentTime = time
         updateNowPlayingElapsed()
+        syncVisualizerAnalyzer()
 
         guard let player else {
             completion?()
@@ -572,6 +575,7 @@ final class AudioPlayerManager {
                     }
                 }
                 self.refreshNowPlayingProgressIfNeeded()
+                self.syncVisualizerAnalyzer()
             }
         }
     }
@@ -638,6 +642,15 @@ final class AudioPlayerManager {
         guard now - lastNowPlayingProgressWrite >= 1 else { return }
         lastNowPlayingProgressWrite = now
         updateNowPlayingElapsed()
+    }
+
+    /// Soft PASS: keep the parallel visualizer bus aligned. No-ops when metering is off.
+    private func syncVisualizerAnalyzer() {
+        VisualizerAudioAnalyzer.shared.sync(
+            trackURL: currentTrack?.url,
+            isPlaying: isPlaying,
+            currentTime: currentTime
+        )
     }
 }
 

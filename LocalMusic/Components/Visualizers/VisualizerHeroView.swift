@@ -42,16 +42,6 @@ struct VisualizerHeroView: View {
         }
         .onChange(of: player.isPlaying) { _, _ in syncAnalyzer() }
         .onChange(of: player.currentTrack?.id) { _, _ in syncAnalyzer() }
-        .onChange(of: player.currentTime) { _, _ in
-            // Lightweight seek sync — analyzer throttles internally.
-            if mode.needsAudioMetering {
-                analyzer.sync(
-                    trackURL: track.url,
-                    isPlaying: isPlaying,
-                    currentTime: player.currentTime
-                )
-            }
-        }
         .onDisappear {
             analyzer.setMeteringEnabled(false)
         }
