@@ -4,10 +4,10 @@ iOS music player that plays audio files from a user-selected folder. SwiftUI, no
 
 ## Build
 
-Project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen) from `project.yml`.
+Project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen) from `project.yml`. **`LocalMusic.xcodeproj` is gitignored** — always run XcodeGen after checkout so sources such as `LocalMusic/Theme/TabRouter.swift` land in the pbxproj:
 
 ```
-xcodegen generate   # regenerate LocalMusic.xcodeproj
+xcodegen generate   # regenerate LocalMusic.xcodeproj (required after clone/pull)
 xcodebuild -project LocalMusic.xcodeproj -scheme LocalMusic -destination 'generic/platform=iOS' build
 ```
 
