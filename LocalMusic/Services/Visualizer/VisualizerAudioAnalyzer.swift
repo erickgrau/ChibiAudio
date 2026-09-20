@@ -37,13 +37,9 @@ final class VisualizerAudioAnalyzer {
     @ObservationIgnored private var trackedURL: URL?
     @ObservationIgnored private var mainIsPlaying = false
 
-    /// Ring of latest samples / levels written from the audio tap thread.
-    @ObservationIgnored private let sampleLock = NSLock()
-    @ObservationIgnored private var pendingSpectrum = [Float](repeating: 0, count: VisualizerFFT.bandCount)
-    @ObservationIgnored private var pendingLeft: Float = 0
-    @ObservationIgnored private var pendingRight: Float = 0
-    @ObservationIgnored private var pendingWave = [Float](repeating: 0, count: VisualizerFFT.waveformSampleCount)
-    @ObservationIgnored private var pendingBeat: Float = 0
+    /// Nonisolated ring buffer: audio tap writes, MainActor publish loop reads.
+    /// Keeps pending meters + `NSLock` off `@MainActor` / async contexts.
+    @ObservationIgnored private let pendingMeters = PendingMeterBuffer()
 
     private init() {}
 
@@ -180,15 +176,11 @@ final class VisualizerAudioAnalyzer {
         guard let audioTrack = tracks.first else { return }
         guard analysisItem === item else { return }
 
-        let bridge = TapBridge { [weak self] spectrum, left, right, wave, beat in
-            guard let self else { return }
-            self.sampleLock.lock()
-            self.pendingSpectrum = spectrum
-            self.pendingLeft = left
-            self.pendingRight = right
-            self.pendingWave = wave
-            self.pendingBeat = beat
-            self.sampleLock.unlock()
+        // Capture the nonisolated buffer — not `self` — so the @Sendable
+        // tap handler never touches MainActor-isolated state.
+        let pending = pendingMeters
+        let bridge = TapBridge { spectrum, left, right, wave, beat in
+            pending.write(spectrum: spectrum, left: left, right: right, wave: wave, beat: beat)
         }
         tapBridge = bridge
 
@@ -203,7 +195,9 @@ final class VisualizerAudioAnalyzer {
             unprepare: { _ in },
             process: { tap, numberFrames, _, bufferListInOut, numberFramesOut, flagsOut in
                 var frames = numberFrames
-                var flags: MTAudioProcessingTapFlags = []
+                // MTAudioProcessingTapFlags is a UInt32 typealias (not OptionSet)
+                // on current SDKs — `[]` fails as `[Any]` → UInt32.
+                var flags: MTAudioProcessingTapFlags = 0
                 MTAudioProcessingTapGetSourceAudio(
                     tap,
                     numberFrames,
@@ -250,13 +244,14 @@ final class VisualizerAudioAnalyzer {
         publishTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                self.sampleLock.lock()
-                let nextSpectrum = VisualizerFFT.decay(self.spectrum, toward: self.pendingSpectrum)
-                let nextLeft = self.spectrumSmooth(self.leftLevel, toward: self.pendingLeft)
-                let nextRight = self.spectrumSmooth(self.rightLevel, toward: self.pendingRight)
-                let nextWave = self.pendingWave
-                let nextBeat = self.spectrumSmooth(self.beatEnergy, toward: self.pendingBeat, rise: 0.7, fall: 0.25)
-                self.sampleLock.unlock()
+                // Lock lives inside PendingMeterBuffer (nonisolated), not here —
+                // NSLock.lock/unlock are unavailable from async contexts.
+                let snap = self.pendingMeters.snapshot()
+                let nextSpectrum = VisualizerFFT.decay(self.spectrum, toward: snap.spectrum)
+                let nextLeft = self.spectrumSmooth(self.leftLevel, toward: snap.left)
+                let nextRight = self.spectrumSmooth(self.rightLevel, toward: snap.right)
+                let nextWave = snap.wave
+                let nextBeat = self.spectrumSmooth(self.beatEnergy, toward: snap.beat, rise: 0.7, fall: 0.25)
 
                 self.spectrum = nextSpectrum
                 self.leftLevel = nextLeft
@@ -282,13 +277,49 @@ final class VisualizerAudioAnalyzer {
         rightLevel = 0
         waveform = Array(repeating: 0, count: VisualizerFFT.waveformSampleCount)
         beatEnergy = 0
-        sampleLock.lock()
-        pendingSpectrum = spectrum
-        pendingLeft = 0
-        pendingRight = 0
-        pendingWave = waveform
-        pendingBeat = 0
-        sampleLock.unlock()
+        pendingMeters.reset()
+    }
+}
+
+// MARK: - Pending meter buffer (tap thread ↔ MainActor)
+
+/// Thread-safe pending Soft PASS meter samples. Written from the audio
+/// render thread via `TapBridge`, read from the MainActor publish loop.
+/// Owns its own `NSLock` so locking never happens on `@MainActor` state
+/// or inside an `async` function body.
+private final class PendingMeterBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var spectrum = [Float](repeating: 0, count: VisualizerFFT.bandCount)
+    private var left: Float = 0
+    private var right: Float = 0
+    private var wave = [Float](repeating: 0, count: VisualizerFFT.waveformSampleCount)
+    private var beat: Float = 0
+
+    func write(spectrum: [Float], left: Float, right: Float, wave: [Float], beat: Float) {
+        lock.lock()
+        self.spectrum = spectrum
+        self.left = left
+        self.right = right
+        self.wave = wave
+        self.beat = beat
+        lock.unlock()
+    }
+
+    func snapshot() -> (spectrum: [Float], left: Float, right: Float, wave: [Float], beat: Float) {
+        lock.lock()
+        let result = (spectrum, left, right, wave, beat)
+        lock.unlock()
+        return result
+    }
+
+    func reset() {
+        lock.lock()
+        spectrum = [Float](repeating: 0, count: VisualizerFFT.bandCount)
+        left = 0
+        right = 0
+        wave = [Float](repeating: 0, count: VisualizerFFT.waveformSampleCount)
+        beat = 0
+        lock.unlock()
     }
 }
 

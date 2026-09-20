@@ -18,7 +18,10 @@ final class PlusStore {
     private(set) var lastError: String?
     private(set) var purchaseInFlight = false
 
-    private var updatesTask: Task<Void, Never>?
+    /// `nonisolated(unsafe)` so `deinit` (nonisolated under Swift 6) can
+    /// cancel the StoreKit updates listener. Written only from `init` on
+    /// the main actor; same pattern as `AudioPlayerManager` session tasks.
+    @ObservationIgnored nonisolated(unsafe) private var updatesTask: Task<Void, Never>?
 
     init() {
         updatesTask = Task { [weak self] in

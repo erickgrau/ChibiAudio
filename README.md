@@ -72,12 +72,15 @@ Out of free v1: Spotify / YouTube Music–style catalogs; licensed MQA Core deco
 
 ## Build
 
+`LocalMusic.xcodeproj` is **not** checked in (see `.gitignore`). After every clone or pull that touches sources / `project.yml`, regenerate so new files (e.g. `LocalMusic/Theme/TabRouter.swift`) are in the pbxproj:
+
 ```bash
 brew install xcodegen   # if needed
-xcodegen
+xcodegen generate       # or plain `xcodegen`
 open LocalMusic.xcodeproj
 ```
 
+Skipping `xcodegen` after checkout yields missing-file / “TabRouter not found” archive failures even when the Swift sources are present.
 - Xcode 16+, iOS 18+, Swift 6
 - Set your Team under Signing & Capabilities (team ID left empty in `project.yml` on purpose)
 - Bundle ID: `com.chibitek.ChibiAudio` · Display name: **ChibiAudio** · App Store subtitle: **Offline HiFi Player**
