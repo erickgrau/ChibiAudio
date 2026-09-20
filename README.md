@@ -85,7 +85,8 @@ open LocalMusic.xcodeproj
 
 | Module | Role |
 |---|---|
-| `LocalMusicApp` | Tabs: Library, Now Playing, Playlists, Radio |
+| `LocalMusicApp` | Tabs: Home (default), Library, Now Playing, Playlists, Radio |
+| `RecentsStore` | Minimal play history for Home Recent / Continue |
 | `AudioPlayerManager` | AVPlayer queue, remote commands, DAC session, cloud prep |
 | `CodecRouter` / `DACSession` / `DSDRouter` | Format matrix + THX Onyx USB path |
 | `EqualizerController` | 10-band EQ + presets; forced off in DAC bit-perfect mode |

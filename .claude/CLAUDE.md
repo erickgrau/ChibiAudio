@@ -15,7 +15,7 @@ Requires Xcode 16+, targets iOS 18+, Swift 6 with `SWIFT_STRICT_CONCURRENCY: com
 
 ## Architecture
 
-Single-target SwiftUI app with three tabs: Library, Now Playing, Playlists. State lives in `@Observable` stores injected via `@Environment(_:)`.
+Single-target SwiftUI app with tabs: Home (default), Library, Now Playing, Playlists, Radio. State lives in `@Observable` stores injected via `@Environment(_:)`.
 
 ```
 LocalMusic/
@@ -23,22 +23,24 @@ LocalMusic/
   Logging.swift               # Log.<category> wrapping os.Logger
   Models/                     # Track, Playlist, RepeatMode, SyncedLyricLine
   Services/                   # AudioPlayerManager, LibraryStore, PlaybackQueue,
-                              # MetadataLoader, PersistenceManager,
+                              # MetadataLoader, PersistenceManager, RecentsStore,
                               # ArtworkCache, LyricsCache
-  Views/                      # LibraryView, NowPlayingView, PlaylistsView,
-                              # PlaylistDetailView, MiniPlayerView, SettingsView
+  Views/                      # HomeView, LibraryView, NowPlayingView, PlaylistsView,
+                              # PlaylistDetailView, MiniPlayerView, SettingsView, RadioView
   Components/                 # ArtworkView, DocumentPicker
 ```
 
-- `LocalMusicApp.swift` — Entry point; tab navigation, `@State` stores, `scenePhase`-driven `LibraryStore.checkForExternalChanges()`
+- `LocalMusicApp.swift` — Entry point; tab navigation (Home default), `@State` stores, `scenePhase`-driven `LibraryStore.checkForExternalChanges()`
 - `Services/AudioPlayerManager.swift` — `@Observable @MainActor`; wraps `AVPlayer`, owns lock-screen/Control Center integration
 - `Services/LibraryStore.swift` — `@Observable @MainActor`; slim `Track` array, debounced filter/sort pipeline, playlist CRUD
+- `Services/RecentsStore.swift` — Minimal play history for Home Recent / Continue
 - `Services/MetadataLoader.swift` — Recursive folder scan, ID3/iTunes metadata extraction, playlist (m3u/pls) parsing and writing
 - `Services/PersistenceManager.swift` — `@unchecked Sendable`; security-scoped folder bookmarks, JSON library cache, folder mtime
 - `Models/Track.swift`, `Playlist.swift`, `RepeatMode.swift`, `SyncedLyricLine.swift` — slim value types
 
 ### Views
 
+- `Views/HomeView.swift` — Soft PASS Home: Continue, Recent, Playlists, Library shortcuts
 - `Views/LibraryView.swift` — Track list with search; `TrackRow` and `NowPlayingBars` components live here
 - `Views/NowPlayingView.swift` — Full-screen player with artwork, ambient color, synced lyrics, seek bar
 - `Views/PlaylistsView.swift` — Playlist list with creation/deletion; `PlaylistMosaicView` thumbnail component
