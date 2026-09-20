@@ -22,6 +22,7 @@ See [NOTICE](NOTICE) for upstream attribution.
 | DSD (`.dsf`/`.dff`) — DoP preferred; never silent lossy fall-back | Policy yes | Same |
 | THX Onyx bit-perfect PCM (USB route, Hi-res/DAC mode, EQ bypass) | Yes | Yes |
 | Cross-source app-owned playlists (local/cloud + Plex + radio + Bandcamp) | Yes | Yes |
+| Multi-seed “Make a Playlist” from owned library (offline tags + optional MusicBrainz/ListenBrainz) | Yes | Yes |
 | Plex personal library — prefer direct/original stream | Yes | Yes |
 | Bandcamp purchased collection (Subsonic API) | Yes | Yes |
 | Free internet radio (Radio Browser + Icecast/Shoutcast URL) | Yes | Yes |
@@ -114,6 +115,8 @@ open LocalMusic.xcodeproj
 | `AppPlaylistStore` | App-owned JSON playlists |
 | `PlexClient` | PMS sections + prefer-original stream URLs |
 | `BandcampSubsonicClient` | Bandcamp Subsonic purchased collection |
+| `PlaylistGenerationService` / `PlaylistScoringEngine` | Multi-seed playlists from owned music |
+| `MusicCatalogClient` | Optional MusicBrainz / ListenBrainz enrichment |
 | `PlusStore` / `PaywallView` | StoreKit Plus + Onyx×Glass paywall |
 | `AdBannerView` | Free-tier banner; no-op when AdMob ID empty |
 | `RadioCatalog` / `RadioBrowserClient` | Curated + Radio Browser directory |

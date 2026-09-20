@@ -15,6 +15,34 @@ struct Track: Identifiable, Codable, Hashable, Sendable {
     var duration: Double
     var hasArtwork: Bool
     var hasLyrics: Bool
+    /// Embedded genre / style tag when present (empty if unknown).
+    var genre: String
+    /// Release year from embedded metadata when present.
+    var year: Int?
+
+    init(
+        id: UUID,
+        url: URL,
+        title: String,
+        artist: String,
+        album: String,
+        duration: Double,
+        hasArtwork: Bool,
+        hasLyrics: Bool,
+        genre: String = "",
+        year: Int? = nil
+    ) {
+        self.id = id
+        self.url = url
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.duration = duration
+        self.hasArtwork = hasArtwork
+        self.hasLyrics = hasLyrics
+        self.genre = genre
+        self.year = year
+    }
 
     /// Stable UUID derived from the file path: a SHA-256 truncated to 16
     /// bytes with RFC 4122 variant + version-5 nibbles set so the value is
