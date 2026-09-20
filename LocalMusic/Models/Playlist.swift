@@ -188,7 +188,7 @@ struct PlaylistDocument: Codable, Sendable {
     var entries: [PlaylistEntry]
 }
 
-enum PlaylistPlaybackGate: Equatable, Sendable {
+enum PlaylistPlaybackGate: Error, Equatable, Sendable {
     case playable
     case needsAppleMusicSubscription
     case needsPlexServer
