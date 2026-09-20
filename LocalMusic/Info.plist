@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Locked branding: display name ChibiAudio · App Store subtitle Offline HiFi Player · bundle com.chibitek.ChibiAudio -->
+	<key>CFBundleDisplayName</key>
+	<string>ChibiAudio</string>
+	<key>CFBundleName</key>
+	<string>ChibiAudio</string>
+	<!-- Documented for App Store Connect; not read by iOS at runtime. -->
+	<key>ChibiAudioAppStoreSubtitle</key>
+	<string>Offline HiFi Player</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

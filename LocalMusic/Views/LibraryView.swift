@@ -91,6 +91,10 @@ struct LibraryView: View {
                 .font(ChibiTheme.heroTitleFont())
                 .foregroundStyle(ChibiTheme.textPrimary)
 
+            Text(AppBranding.appStoreSubtitle)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(ChibiTheme.amber)
+
             Text("Select a folder on this iPhone, iCloud Drive, or another Files provider (e.g. Google Drive) to build your library — plays fully offline once files are local.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(ChibiTheme.textSecondary)

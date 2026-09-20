@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import LocalMusic
 
-@Suite("Visualizer Soft PASS")
+@Suite("Visualizer modes")
 struct VisualizerModeTests {
 
     @Test func loadPersisted_defaultsToAlbumArt() {
@@ -16,7 +16,6 @@ struct VisualizerModeTests {
             #expect(VisualizerMode.loadPersisted() == mode)
             #expect(UserDefaults.standard.string(forKey: VisualizerMode.defaultsKey) == mode.rawValue)
         }
-        // Soft PASS default restore for other tests / app state.
         VisualizerMode.albumArt.persist()
     }
 
@@ -33,12 +32,26 @@ struct VisualizerModeTests {
         #expect(VisualizerMode.vectors.needsAudioMetering == true)
     }
 
-    @Test func allCases_hasNineSoftPassModes() {
+    @Test func allCases_hasNineModes() {
         #expect(VisualizerMode.allCases.count == 9)
+    }
+
+    @Test func freeCore_isAlbumAndTrackArtOnly() {
+        #expect(VisualizerMode.freeModes == [.albumArt, .trackArt])
+        #expect(VisualizerMode.albumArt.requiresPlus == false)
+        #expect(VisualizerMode.vuMeters.requiresPlus == true)
+        #expect(VisualizerMode.vinyl.requiresPlus == true)
+    }
+
+    @Test func availableModes_gatesOnPlus() {
+        #expect(VisualizerMode.availableModes(isPlusActive: false).count == 2)
+        #expect(VisualizerMode.availableModes(isPlusActive: true).count == 9)
+        #expect(VisualizerMode.clamped(.kaleidoscope, isPlusActive: false) == .albumArt)
+        #expect(VisualizerMode.clamped(.kaleidoscope, isPlusActive: true) == .kaleidoscope)
     }
 }
 
-@Suite("VisualizerFFT Soft PASS")
+@Suite("VisualizerFFT")
 struct VisualizerFFTTests {
 
     @Test func logBands_emptyInput_returnsZeros() {

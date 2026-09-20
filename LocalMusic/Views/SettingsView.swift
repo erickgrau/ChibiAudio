@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AudioPlayerManager.self) private var player
+    @Environment(PlusStore.self) private var plus
 
     private static let forkURL = URL(string: "https://github.com/erickgrau/ChibiAudio")!
     private static let upstreamURL = URL(string: "https://github.com/j23n/localmusic")!
@@ -15,15 +16,40 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @State private var showFolderPicker = false
+    @State private var showPaywall = false
     @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
     @AppStorage(DACSession.dacModeDefaultsKey) private var dacModeEnabled = false
     @State private var plexServer = PlexClient.shared.serverURLString
     @State private var plexToken = PlexClient.shared.token
+    @State private var bandcampServer = BandcampSubsonicClient.shared.serverURLString
+    @State private var bandcampUser = BandcampSubsonicClient.shared.username
+    @State private var bandcampPassword = BandcampSubsonicClient.shared.password
     private let crashService = CrashDiagnosticsService.shared
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    if plus.isPlusActive {
+                        Label("ChibiAudio Plus is active", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(ChibiTheme.teal)
+                        Button("Manage Plus") { showPaywall = true }
+                    } else {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            Label("Upgrade to Plus — \(plus.displayPrice)/mo", systemImage: "sparkles")
+                        }
+                        Button("Restore Purchases") {
+                            Task { _ = await plus.restore() }
+                        }
+                    }
+                } header: {
+                    Text("ChibiAudio Plus")
+                } footer: {
+                    Text("Plus removes ads and unlocks all visualizer modes, plus CarPlay and Watch stubs. Local files, Plex, Radio Browser, and album/track art stay free.")
+                }
+
                 Section {
                     Button {
                         showFolderPicker = true
@@ -122,6 +148,86 @@ struct SettingsView: View {
                     Text("Personal PMS only. Create a token at plex.tv/claim or from account XML. LAN direct play of your library works without Plex Pass; some remote features may need Pass.")
                 }
 
+                Section {
+                    TextField("Server URL", text: $bandcampServer)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    TextField("Subsonic username", text: $bandcampUser)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("Subsonic password", text: $bandcampPassword)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Button("Save Bandcamp Settings") {
+                        let client = BandcampSubsonicClient.shared
+                        let trimmed = bandcampServer.trimmingCharacters(in: .whitespacesAndNewlines)
+                        client.serverURLString = trimmed.isEmpty
+                            ? BandcampSubsonicClient.defaultServerURL
+                            : trimmed
+                        client.username = bandcampUser.trimmingCharacters(in: .whitespacesAndNewlines)
+                        client.password = bandcampPassword
+                        bandcampServer = client.serverURLString
+                    }
+                    NavigationLink("Browse Bandcamp Collection") {
+                        BandcampBrowserView()
+                    }
+                } header: {
+                    Text("Bandcamp")
+                } footer: {
+                    Text("Official Subsonic API at \(BandcampSubsonicClient.defaultServerURL). Generate username and password in Bandcamp Fan Settings → Subsonic. Streams your purchased collection only — no HTML scraping.")
+                }
+
+                Section {
+                    if CarPlayAudioTemplateStub.isUnlocked(isPlusActive: plus.isPlusActive) {
+                        Label(CarPlayAudioTemplateStub.featureTitle, systemImage: "car.fill")
+                        Text(CarPlayAudioTemplateStub.featureDetail)
+                            .font(.footnote)
+                            .foregroundStyle(ChibiTheme.textSecondary)
+                        Text("Enable the CarPlay entitlement in Xcode when you are ready to ship — this repo does not invent Dist certs or entitlements.")
+                            .font(.caption)
+                            .foregroundStyle(ChibiTheme.textTertiary)
+                    } else {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            Label("\(CarPlayAudioTemplateStub.featureTitle) — Plus", systemImage: "lock.fill")
+                        }
+                    }
+
+                    if WatchCompanionStub.isUnlocked(isPlusActive: plus.isPlusActive) {
+                        Label(WatchCompanionStub.featureTitle, systemImage: "applewatch")
+                        Text(WatchCompanionStub.featureDetail)
+                            .font(.footnote)
+                            .foregroundStyle(ChibiTheme.textSecondary)
+                    } else {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            Label("\(WatchCompanionStub.featureTitle) — Plus", systemImage: "lock.fill")
+                        }
+                    }
+                } header: {
+                    Text("CarPlay & Watch")
+                } footer: {
+                    Text("CarPlay uses Apple Audio templates only (large Now Playing art, browse, queue). Visualizers and vinyl/mixtape stay on iPhone and iPad — never on the dash.")
+                }
+
+                Section {
+                    if plus.isPlusActive {
+                        Text("Ads are off while Plus is active.")
+                            .foregroundStyle(ChibiTheme.textSecondary)
+                    } else if AdMobConfig.isConfigured {
+                        Text("A free-tier banner may appear on Home, Library, Playlists, and Radio — never over Now Playing, DAC, or the visualizer.")
+                            .foregroundStyle(ChibiTheme.textSecondary)
+                    } else {
+                        Text("Ads stay off until an AdMob app ID is configured (empty in CI builds).")
+                            .foregroundStyle(ChibiTheme.textSecondary)
+                    }
+                } header: {
+                    Text("Ads")
+                }
+
                 Section("Stats") {
                     LabeledContent("Total Songs", value: "\(library.tracks.count)")
                     LabeledContent("Total Playlists", value: "\(library.playlists.count)")
@@ -150,7 +256,10 @@ struct SettingsView: View {
 
                 Section("About") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("ChibiAudio is a free fork of LocalMusic. Local/cloud folders and app-owned mixed playlists need no subscription. Apple Music catalog play (optional later) needs Apple Music.")
+                        Text(AppBranding.tagline)
+                            .font(.headline)
+                            .foregroundStyle(ChibiTheme.textPrimary)
+                        Text("ChibiAudio is a free fork of LocalMusic with optional Plus. Local/cloud folders, Plex, Radio Browser, and Bandcamp Subsonic need no Plus subscription. Apple Music catalog play (optional later) needs Apple Music.")
                             .font(.callout)
 
                         Text("Based on open-source LocalMusic (MPL-2.0). Found a bug or have feedback?")
@@ -210,6 +319,9 @@ struct SettingsView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
             .onChange(of: crashReportingEnabled) { _, newValue in
                 crashService.setEnabled(newValue)
             }
@@ -219,6 +331,9 @@ struct SettingsView: View {
             .onAppear {
                 plexServer = PlexClient.shared.serverURLString
                 plexToken = PlexClient.shared.token
+                bandcampServer = BandcampSubsonicClient.shared.serverURLString
+                bandcampUser = BandcampSubsonicClient.shared.username
+                bandcampPassword = BandcampSubsonicClient.shared.password
             }
         }
     }

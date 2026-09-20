@@ -8,9 +8,11 @@ This project is a fork of LocalMusic by j23n:
 Upstream LocalMusic is licensed under the Mozilla Public License 2.0 (MPL-2.0).
 See LICENSE for the full license text.
 
-Modifications for ChibiAudio (branding, codec routing, hi-res session options,
-cloud-folder documentation, free internet radio / public-catalog extras, and
-optional MusicKit stubs) are also distributed under MPL-2.0.
+Modifications for ChibiAudio (display name ChibiAudio, App Store subtitle
+“Offline HiFi Player”, bundle com.chibitek.ChibiAudio, branding, codec routing,
+hi-res session options, cloud-folder documentation, free internet radio /
+public-catalog extras, Bandcamp Subsonic, optional Plus, and MusicKit stubs)
+are also distributed under MPL-2.0.
 
 Attribution
 -----------

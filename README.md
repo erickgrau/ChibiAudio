@@ -1,31 +1,41 @@
 # ChibiAudio
 
-**Free v1** personal iOS music player — a fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
+**Offline HiFi Player** — free + optional Plus personal iOS music player. Fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
 
-LocalMusic architecture stays under `LocalMusic/` (folder picker, security-scoped bookmarks, library scan, AVPlayer queue, lyrics, lock screen / Now Playing). ChibiAudio layers branding and the locked free-v1 extras below.
-
-See [NOTICE](NOTICE) for upstream attribution. No IAP / paywall.
-
-## Free v1 — Soft PASS lock
-
-| Capability | Free v1 |
+| | |
 |---|---|
-| Offline On My iPhone / app Documents via Files + security-scoped bookmarks | Yes (upstream) |
-| iCloud Drive / Google Drive folders via system Files picker + bookmarks | Yes |
-| Lossless / hi-res PCM (FLAC, ALAC, WAV, AIFF, high-bitrate AAC/M4A, MP3) native AVFoundation | Yes |
-| DSD (`.dsf`/`.dff`) — DoP preferred; never silent lossy fall-back | Policy yes; DoP encoder not bundled yet (refuse play vs crush) |
-| THX Onyx bit-perfect PCM (USB route, Hi-res/DAC mode, EQ bypass) | Yes |
-| Cross-source app-owned playlists (local/cloud + Plex + radio; AM IDs gated) | Yes |
-| Plex personal library — prefer direct/original stream | Yes (LAN/token) |
-| Graphic EQ with presets; **bypassed** when bit-perfect / DAC mode | Yes (settings + bypass; float-PCM engine insert optional follow-up) |
-| Embedded + synced lyrics, background audio, lock screen | Yes (upstream) |
-| Now Playing visualizer suite Soft PASS (art / VU / LED / EQ / kaleidoscope / vectors / vinyl / mixtape) | Yes (parallel-bus metering; DAC path untouched) |
-| Free internet radio (Radio Browser directory + Icecast/Shoutcast URL) | Yes |
-| Apple Music *catalog* play | Optional / gated — needs user Apple Music sub; not free streaming |
-| MQA | Onyx **renderer** passthrough only — **no** licensed MQA Core decoder |
-| IAP / paywall | None |
+| **Display name** | ChibiAudio |
+| **App Store subtitle** | Offline HiFi Player |
+| **Bundle ID** | `com.chibitek.ChibiAudio` |
 
-Out of free v1: Spotify / YouTube Music–style catalogs; visual redesign; App Store submit.
+LocalMusic architecture stays under `LocalMusic/` (folder picker, security-scoped bookmarks, library scan, AVPlayer queue, lyrics, lock screen / Now Playing). ChibiAudio layers branding, free-tier sources, and optional **ChibiAudio Plus** ($1.99/mo).
+
+See [NOTICE](NOTICE) for upstream attribution.
+
+## What you get
+
+| Capability | Free | Plus ($1.99/mo) |
+|---|---|---|
+| Offline On My iPhone / app Documents via Files + security-scoped bookmarks | Yes | Yes |
+| iCloud Drive / Google Drive folders via system Files picker + bookmarks | Yes | Yes |
+| Lossless / hi-res PCM (FLAC, ALAC, WAV, AIFF, high-bitrate AAC/M4A, MP3) | Yes | Yes |
+| DSD (`.dsf`/`.dff`) — DoP preferred; never silent lossy fall-back | Policy yes | Same |
+| THX Onyx bit-perfect PCM (USB route, Hi-res/DAC mode, EQ bypass) | Yes | Yes |
+| Cross-source app-owned playlists (local/cloud + Plex + radio + Bandcamp) | Yes | Yes |
+| Plex personal library — prefer direct/original stream | Yes | Yes |
+| Bandcamp purchased collection (Subsonic API) | Yes | Yes |
+| Free internet radio (Radio Browser + Icecast/Shoutcast URL) | Yes | Yes |
+| Core visuals (album art · track art) | Yes | Yes |
+| Banner ads (never over Now Playing / DAC / visualizer) | Yes* | No ads |
+| All visualizer modes (VU, LED, spectrum, kaleidoscope, vectors, vinyl, mixtape) | — | Yes |
+| CarPlay stubs (Apple Audio templates: large NP art, browse, queue) | — | Yes |
+| Apple Watch companion stubs | — | Yes |
+
+\* Ads are a no-op when `ADMOB_APP_ID` / `GADApplicationIdentifier` is empty (CI / default builds).
+
+StoreKit product: `com.chibitek.ChibiAudio.plus.monthly` (auto-renewable). Restore Purchases is in Settings and on the paywall.
+
+Out of free v1: Spotify / YouTube Music–style catalogs; licensed MQA Core decode; inventing Dist certs or CarPlay entitlements.
 
 ## Sources matrix
 
@@ -34,9 +44,10 @@ Out of free v1: Spotify / YouTube Music–style catalogs; visual redesign; App S
 | On My iPhone / Documents | Yes | Files folder picker + bookmarks; plays fully offline |
 | iCloud Drive | Yes | Same picker; download-to-play when ubiquitous |
 | Google Drive (Files provider) | Yes | Install Drive app → enable in Files → pick folder |
-| App-owned mixed playlists | Yes | No sub to mix offline + Plex + radio in *our* DB |
-| Free radio (Radio Browser + custom URL) | Yes | Radio tab: Browse / Search / Favorites |
+| App-owned mixed playlists | Yes | No sub to mix offline + Plex + radio + Bandcamp in *our* DB |
+| Free radio (Radio Browser + Icecast / Shoutcast URL) | Yes | Radio tab |
 | Plex Media Server (your library) | Yes* | Token + LAN stream; *some remote/Plexamp features may need Plex Pass |
+| Bandcamp (purchased collection) | Yes | Settings → Bandcamp; server `https://bandcamp.com/api/subsonic`; Fan Settings Subsonic user/pass |
 | Apple Music catalog | Sub required to *play* | Optional later; gated on `canPlayCatalogContent` |
 | Spotify / YT Music catalogs | No | Out of free v1 |
 
@@ -45,7 +56,8 @@ Out of free v1: Spotify / YouTube Music–style catalogs; visual redesign; App S
 - App-owned mixed playlists = free.
 - Apple Music catalog play needs the user’s Apple Music subscription.
 - Plex: basic stream of *your* PMS library on LAN does not require Plex Pass; remote/Pass caveats apply.
-- No IAP. No pretending paid catalogs are free.
+- Bandcamp: official Subsonic API only — purchased collection; no HTML scrape.
+- Plus is optional. Free core stays usable without it.
 
 ## Hardware — THX Onyx (reference DAC)
 
@@ -67,14 +79,22 @@ open LocalMusic.xcodeproj
 
 - Xcode 16+, iOS 18+, Swift 6
 - Set your Team under Signing & Capabilities (team ID left empty in `project.yml` on purpose)
-- Bundle ID: `com.chibitek.ChibiAudio` · Display name: **ChibiAudio**
+- Bundle ID: `com.chibitek.ChibiAudio` · Display name: **ChibiAudio** · App Store subtitle: **Offline HiFi Player**
 - Xcode target/module name remains `LocalMusic` (upstream layout)
+- Optional StoreKit testing: scheme uses `LocalMusic/Configuration/ChibiAudio.storekit`
+- Ads: leave `GADApplicationIdentifier` unset for CI; set `ADMOB_APP_ID` / plist value for release builds that link Google Mobile Ads
 
 ### Plex token
 
 1. Obtain `X-Plex-Token` from your Plex account / server.
 2. Settings → Plex → `http://…:32400` + token → Browse Plex Music.
 3. Prefer LAN (`NSAllowsLocalNetworking` enabled).
+
+### Bandcamp Subsonic
+
+1. Bandcamp → Fan Settings → Subsonic → generate username / password.
+2. Settings → Bandcamp → server defaults to `https://bandcamp.com/api/subsonic` → save → Browse Bandcamp Collection.
+3. Streams purchased collection only.
 
 ### Google Drive / iCloud
 
@@ -86,16 +106,17 @@ open LocalMusic.xcodeproj
 
 | Module | Role |
 |---|---|
-| `LocalMusicApp` | Tabs: Home (default), Library, Now Playing, Playlists, Radio |
-| `RecentsStore` | Minimal play history for Home Recent / Continue |
+| `LocalMusicApp` | Tabs: Home, Library, Now Playing, Playlists, Radio |
 | `AudioPlayerManager` | AVPlayer queue, remote commands, DAC session, cloud prep |
 | `CodecRouter` / `DACSession` / `DSDRouter` | Format matrix + THX Onyx USB path |
 | `EqualizerController` | 10-band EQ + presets; forced off in DAC bit-perfect mode |
 | `Playlist` + `PlaylistSourceRef` | Multi-source entries |
 | `AppPlaylistStore` | App-owned JSON playlists |
 | `PlexClient` | PMS sections + prefer-original stream URLs |
-| `RadioBrowserClient` | Radio Browser mirrors, search, light cache |
-| `RadioCatalog` | Favorites + curated + user stream URLs |
+| `BandcampSubsonicClient` | Bandcamp Subsonic purchased collection |
+| `PlusStore` / `PaywallView` | StoreKit Plus + Onyx×Glass paywall |
+| `AdBannerView` | Free-tier banner; no-op when AdMob ID empty |
+| `RadioCatalog` / `RadioBrowserClient` | Curated + Radio Browser directory |
 | `MetadataLoader` / `PersistenceManager` / lyrics / artwork | Upstream |
 
 ## Changelog vs upstream

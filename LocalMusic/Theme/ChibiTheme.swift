@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Soft PASS design: **Onyx Dark** canvas + **Soft Glass** materials.
+/// Design tokens: **Onyx Dark** canvas + **Soft Glass** materials.
 /// Accents are indicators only (amber = hi-res/PCM, teal = USB/DAC) — not a rainbow UI.
 enum ChibiTheme {
 
@@ -55,6 +55,7 @@ enum MediaSourceKind: String, Sendable {
     case drive
     case plex
     case radio
+    case bandcamp
     case appleMusic
 
     var label: String {
@@ -64,6 +65,7 @@ enum MediaSourceKind: String, Sendable {
         case .drive: return "Drive"
         case .plex: return "Plex"
         case .radio: return "Radio"
+        case .bandcamp: return "Bandcamp"
         case .appleMusic: return "Apple Music"
         }
     }
@@ -72,7 +74,11 @@ enum MediaSourceKind: String, Sendable {
     static func infer(from url: URL) -> MediaSourceKind {
         if !url.isFileURL {
             let host = url.host?.lowercased() ?? ""
-            if host.contains("plex") || url.path.contains("/library/metadata/") {
+            let path = url.path.lowercased()
+            if host.contains("bandcamp") || path.contains("/api/subsonic") {
+                return .bandcamp
+            }
+            if host.contains("plex") || path.contains("/library/metadata/") {
                 return .plex
             }
             return .radio
@@ -92,7 +98,9 @@ enum MediaSourceKind: String, Sendable {
         case .localFile(let urlString, _):
             if let url = URL(string: urlString) { return infer(from: url) }
             return .onDevice
-        case .stream: return .radio
+        case .stream(let urlString, _, _):
+            if let url = URL(string: urlString) { return infer(from: url) }
+            return .radio
         case .plex: return .plex
         case .appleMusic: return .appleMusic
         }
