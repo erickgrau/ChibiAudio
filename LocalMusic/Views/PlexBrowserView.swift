@@ -2,10 +2,10 @@ import SwiftUI
 
 struct PlexBrowserView: View {
     @Environment(AudioPlayerManager.self) private var player
-    @Environment(LibraryStore.self) private var library
     @Bindable private var client = PlexClient.shared
     @State private var tracks: [PlexClient.PlexTrack] = []
     @State private var selectedSection: PlexClient.PlexDirectory?
+    @State private var addPayload: AddToPlaylistPayload?
 
     var body: some View {
         List {
@@ -42,15 +42,25 @@ struct PlexBrowserView: View {
                                 play(track)
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(track.title).foregroundStyle(.primary)
+                                    Text(track.title)
+                                        .foregroundStyle(ChibiTheme.textPrimary)
                                     Text("\(track.artist) — \(track.album)")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(ChibiTheme.textSecondary)
                                 }
                             }
                             .contextMenu {
-                                Button("Add to Playlist") {
-                                    addToPlaylist(track)
+                                Button {
+                                    addPayload = .plex(
+                                        serverURL: client.serverURLString,
+                                        ratingKey: track.ratingKey,
+                                        title: track.title,
+                                        artist: track.artist,
+                                        album: track.album,
+                                        duration: track.durationMs / 1000
+                                    )
+                                } label: {
+                                    Label("Add to Playlist", systemImage: "text.badge.plus")
                                 }
                             }
                         }
@@ -63,6 +73,9 @@ struct PlexBrowserView: View {
         .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .tint(ChibiTheme.amber)
+        .sheet(item: $addPayload) { payload in
+            AddToPlaylistSheet(payload: payload)
+        }
         .task {
             if client.isConfigured {
                 await client.refreshMusicLibraries()
@@ -86,18 +99,5 @@ struct PlexBrowserView: View {
             hasLyrics: false
         )
         player.play(track: t, queue: [t], startIndex: 0)
-    }
-
-    private func addToPlaylist(_ track: PlexClient.PlexTrack) {
-        guard var playlist = library.playlists.first else { return }
-        playlist.appendPlex(
-            serverURL: client.serverURLString,
-            ratingKey: track.ratingKey,
-            title: track.title,
-            artist: track.artist,
-            album: track.album,
-            duration: track.durationMs / 1000
-        )
-        library.savePlaylist(playlist)
     }
 }

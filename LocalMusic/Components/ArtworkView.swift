@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Shows artwork for a track URL, loading from `ArtworkCache` asynchronously.
-/// Avoids the synchronous `UIImage(data:)` decode in row rendering paths.
+/// Soft PASS: embedded/cache first, then folder.jpg/cover.* discovery, then placeholder.
 struct ArtworkView: View {
     let trackURL: URL?
     let hasArtwork: Bool
@@ -20,10 +20,10 @@ struct ArtworkView: View {
                     .aspectRatio(contentMode: .fill)
             } else {
                 ZStack {
-                    Color(white: 0.85).opacity(0.5)
+                    ChibiTheme.canvasElevated
                     Image(systemName: placeholderIcon)
-                        .font(.body)
-                        .foregroundStyle(Color(white: 0.55))
+                        .font(pointSize > 80 ? .largeTitle : .body)
+                        .foregroundStyle(ChibiTheme.textTertiary)
                 }
             }
         }
@@ -38,10 +38,18 @@ struct ArtworkView: View {
     }
 
     private func load() async {
-        guard let url = trackURL, hasArtwork else {
+        guard let url = trackURL else {
             image = nil
             return
         }
+
+        // Soft PASS: ensure folder art is cached even when scan-time hasArtwork was false.
+        let available = hasArtwork || ArtworkCache.ensureArtworkAvailable(for: url)
+        guard available else {
+            image = nil
+            return
+        }
+
         let scale = displayScale > 0 ? displayScale : 2.0
         let maxPixel = max(pointSize * scale, 1)
         if fullResolution {

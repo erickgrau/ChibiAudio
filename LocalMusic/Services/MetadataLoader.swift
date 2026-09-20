@@ -194,20 +194,31 @@ struct MetadataLoader {
         } catch { }
 
         // Persist artwork to disk cache instead of the in-memory Track.
+        // Soft PASS order: embedded metadata → folder.jpg / cover.* → none.
         var hasArtwork = false
         if let data = artworkData, !data.isEmpty {
             ArtworkCache.storeSync(data, for: url)
             hasArtwork = true
-        } else {
+        } else if let folderData = ArtworkCache.discoverFolderArtwork(beside: url) {
+            ArtworkCache.storeSync(folderData, for: url)
+            hasArtwork = true
+        } else if ArtworkCache.hasArtwork(for: url) {
             // Clean up stale artwork from a prior scan.
-            if ArtworkCache.hasArtwork(for: url) {
-                ArtworkCache.remove(for: url)
-            }
+            ArtworkCache.remove(for: url)
         }
 
         // Persist lyrics to disk cache; only `hasLyrics` lives on the Track.
-        let unsynced = await extractUnsyncedLyrics(from: asset)
-        let synced = await extractSyncedLyrics(from: asset)
+        // Soft PASS: embedded tags first, then sibling .lrc sidecar.
+        let unsyncedEmbedded = await extractUnsyncedLyrics(from: asset)
+        let syncedEmbedded = await extractSyncedLyrics(from: asset)
+        let sidecar = loadSidecarLyrics(beside: url)
+        let synced = (syncedEmbedded?.isEmpty == false) ? syncedEmbedded : sidecar?.synced
+        let unsynced: String?
+        if let unsyncedEmbedded, !unsyncedEmbedded.isEmpty {
+            unsynced = unsyncedEmbedded
+        } else {
+            unsynced = sidecar?.unsynced
+        }
         let lyrics = TrackLyrics(unsynced: unsynced, synced: synced)
         var hasLyrics = false
         if !lyrics.isEmpty {
@@ -230,6 +241,73 @@ struct MetadataLoader {
     }
 
     // MARK: - Lyrics Extraction
+
+    /// Loads a sibling `.lrc` next to the audio file (same basename).
+    static func loadSidecarLyrics(beside trackURL: URL) -> TrackLyrics? {
+        let lrcURL = trackURL.deletingPathExtension().appendingPathExtension("lrc")
+        guard FileManager.default.fileExists(atPath: lrcURL.path) else { return nil }
+
+        let text: String
+        if let utf8 = try? String(contentsOf: lrcURL, encoding: .utf8) {
+            text = utf8
+        } else if let latin = try? String(contentsOf: lrcURL, encoding: .isoLatin1) {
+            text = latin
+        } else {
+            return nil
+        }
+
+        if let synced = parseLRC(text), !synced.isEmpty {
+            return TrackLyrics(unsynced: nil, synced: synced)
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return TrackLyrics(unsynced: trimmed, synced: nil)
+    }
+
+    /// Parse standard LRC (`[mm:ss.xx]text`). Ignores metadata tags (`[ti:]`, `[ar:]`, …).
+    /// Supports multiple timestamps on one line. Returns `nil` when no timed lines exist.
+    static func parseLRC(_ text: String) -> [SyncedLyricLine]? {
+        var lines: [SyncedLyricLine] = []
+
+        for rawLine in text.split(whereSeparator: \.isNewline) {
+            let line = String(rawLine)
+            var idx = line.startIndex
+            var timestamps: [Double] = []
+            var lyricStart = line.startIndex
+
+            while idx < line.endIndex, line[idx] == "[" {
+                guard let close = line[idx...].firstIndex(of: "]") else { break }
+                let inner = String(line[line.index(after: idx)..<close])
+                guard let stamp = parseLRCTimestamp(inner) else { break }
+                timestamps.append(stamp)
+                lyricStart = line.index(after: close)
+                idx = lyricStart
+            }
+
+            guard !timestamps.isEmpty else { continue }
+            let lyricText = String(line[lyricStart...]).trimmingCharacters(in: .whitespaces)
+            guard !lyricText.isEmpty else { continue }
+
+            for ts in timestamps {
+                lines.append(SyncedLyricLine(timestamp: ts, text: lyricText))
+            }
+        }
+
+        guard !lines.isEmpty else { return nil }
+        return lines.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    /// Parses `mm:ss`, `mm:ss.xx`, or `mm:ss.xxx` into seconds. Returns `nil` for metadata ids.
+    static func parseLRCTimestamp(_ value: String) -> Double? {
+        let parts = value.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2,
+              let minutes = Double(parts[0]),
+              let seconds = Double(parts[1]),
+              minutes >= 0,
+              seconds >= 0
+        else { return nil }
+        return minutes * 60 + seconds
+    }
 
     private static func extractUnsyncedLyrics(from asset: AVAsset) async -> String? {
         // Try iTunes metadata (©lyr)

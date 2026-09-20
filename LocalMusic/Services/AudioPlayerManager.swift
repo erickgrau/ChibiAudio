@@ -502,6 +502,10 @@ final class AudioPlayerManager {
         } else {
             player?.replaceCurrentItem(with: item)
         }
+        // Soft PASS: keep system AirPlay / external routes available.
+        // Selecting a USB DAC via the route picker still uses the bit-perfect DAC path.
+        player?.allowsExternalPlayback = true
+        player?.usesExternalPlaybackWhileExternalScreenIsActive = false
 
         // Wait for the item to be ready before playing.
         //

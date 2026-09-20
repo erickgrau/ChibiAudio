@@ -325,6 +325,60 @@ final class MetadataLoaderTests {
         #expect(lines.map(\.text) == ["Hello"])
     }
 
+    // MARK: - parseLRC
+
+    @Test func parseLRC_basicSyncedLines() throws {
+        let text = """
+        [ti:Demo]
+        [ar:Artist]
+        [00:12.00]First line
+        [00:15.50]Second line
+        [01:02.125]Third line
+        """
+        let lines = try #require(MetadataLoader.parseLRC(text))
+        #expect(lines.count == 3)
+        #expect(lines[0].text == "First line")
+        #expect(abs(lines[0].timestamp - 12.0) < 0.0001)
+        #expect(lines[1].text == "Second line")
+        #expect(abs(lines[1].timestamp - 15.5) < 0.0001)
+        #expect(lines[2].text == "Third line")
+        #expect(abs(lines[2].timestamp - 62.125) < 0.0001)
+    }
+
+    @Test func parseLRC_multipleTimestampsOnOneLine() throws {
+        let text = "[00:10.00][00:20.00]Chorus"
+        let lines = try #require(MetadataLoader.parseLRC(text))
+        #expect(lines.map(\.text) == ["Chorus", "Chorus"])
+        #expect(abs(lines[0].timestamp - 10.0) < 0.0001)
+        #expect(abs(lines[1].timestamp - 20.0) < 0.0001)
+    }
+
+    @Test func parseLRC_ignoresMetadataOnlyAndEmptyBodies() {
+        let text = """
+        [ti:Only Meta]
+        [ar:Nobody]
+        [00:05.00]
+        plain text without stamps
+        """
+        #expect(MetadataLoader.parseLRC(text) == nil)
+    }
+
+    @Test func parseLRCTimestamp_rejectsMetadataIds() {
+        #expect(MetadataLoader.parseLRCTimestamp("ti:Album") == nil)
+        #expect(MetadataLoader.parseLRCTimestamp("00:12.34") != nil)
+    }
+
+    @Test func loadSidecarLyrics_readsSiblingLRC() throws {
+        let track = tempDir.appendingPathComponent("song.flac")
+        FileManager.default.createFile(atPath: track.path, contents: Data())
+        let lrc = tempDir.appendingPathComponent("song.lrc")
+        try "[00:01.00]Hello from sidecar\n".write(to: lrc, atomically: true, encoding: .utf8)
+
+        let lyrics = try #require(MetadataLoader.loadSidecarLyrics(beside: track))
+        #expect(lyrics.synced?.first?.text == "Hello from sidecar")
+        #expect(abs((lyrics.synced?.first?.timestamp ?? 0) - 1.0) < 0.0001)
+    }
+
     // MARK: - Helpers
 
     private func touch(_ relativePath: String, makeDirs: Bool = false) throws {

@@ -32,3 +32,11 @@ Locked bar only — no visual redesign in this release.
 ### EQ + upstream player strengths
 - 10-band EQ + presets; bypassed when DAC/bit-perfect
 - Lyrics, background audio, lock screen unchanged from upstream
+
+## Wave 1 Soft PASS (player surfaces)
+
+- **Artwork:** embedded metadata → `folder.jpg` / `cover.*` sidecar → placeholder; big Now Playing hero art
+- **Lyrics:** Soft Glass sheet with synced auto-scroll, unsynced text, `.lrc` sidecar + embedded; empty state
+- **AirPlay:** `AVRoutePickerView` on Now Playing; `allowsExternalPlayback` kept on; USB DAC bit-perfect path unchanged
+- **Add to Playlist:** shared sheet from Now Playing / Library / Radio / Plex (pick existing or create)
+- **Polish:** Onyx×Glass placeholders, lyrics chrome, playlist mosaic empties

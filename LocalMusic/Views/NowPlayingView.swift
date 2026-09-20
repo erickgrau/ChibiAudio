@@ -3,7 +3,9 @@ import UIKit
 
 struct NowPlayingView: View {
     @Environment(AudioPlayerManager.self) private var player
+
     @State private var showLyrics = false
+    @State private var showAddToPlaylist = false
     @State private var lyrics: TrackLyrics?
     @State private var lyricsTrackID: UUID?
     @State private var artworkColor: UIColor = .systemGray
@@ -27,6 +29,41 @@ struct NowPlayingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                if player.currentTrack != nil {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button {
+                            showLyrics = true
+                        } label: {
+                            Image(systemName: "quote.opening")
+                        }
+                        .accessibilityLabel("Lyrics")
+
+                        Button {
+                            showAddToPlaylist = true
+                        } label: {
+                            Image(systemName: "text.badge.plus")
+                        }
+                        .accessibilityLabel("Add to Playlist")
+                    }
+                }
+            }
+            .onChange(of: player.currentTrack?.id) { _, _ in
+                showLyrics = false
+            }
+        }
+        .sheet(isPresented: $showLyrics) {
+            if let track = player.currentTrack {
+                LyricsSheet(
+                    track: track,
+                    lyrics: lyrics
+                )
+            }
+        }
+        .sheet(isPresented: $showAddToPlaylist) {
+            if let track = player.currentTrack {
+                AddToPlaylistSheet(payload: .local(track))
+            }
         }
         .chibiCanvas()
     }
@@ -70,7 +107,6 @@ struct NowPlayingView: View {
 
     private func nowPlayingContent(track: Track) -> some View {
         let color = Color(artworkColor)
-        let hasLoadedLyrics = lyrics?.isEmpty == false
         let source = MediaSourceKind.infer(from: track.url)
 
         return GeometryReader { geo in
@@ -96,46 +132,31 @@ struct NowPlayingView: View {
                 VStack(spacing: 0) {
                     Spacer(minLength: 8)
 
-                    ZStack {
-                        artworkView(track: track, size: artworkSize)
-                            .frame(width: artworkSize, height: artworkSize)
-                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                    .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
-                            )
-                            .opacity(showLyrics ? 0 : 1)
-                            .rotation3DEffect(.degrees(showLyrics ? 180 : 0), axis: (x: 0, y: 1, z: 0))
-
-                        lyricsView(track: track, size: artworkSize)
-                            .frame(width: artworkSize, height: artworkSize)
-                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                            .opacity(showLyrics ? 1 : 0)
-                            .rotation3DEffect(.degrees(showLyrics ? 0 : -180), axis: (x: 0, y: 1, z: 0))
-                    }
-                    .shadow(color: .black.opacity(0.45), radius: 28, x: 0, y: 16)
-                    .animation(.spring(response: 0.5), value: track.id)
-                    .onTapGesture {
-                        if hasLoadedLyrics {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                showLyrics.toggle()
-                            }
+                    artworkView(track: track, size: artworkSize)
+                        .frame(width: artworkSize, height: artworkSize)
+                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.45), radius: 28, x: 0, y: 16)
+                        .animation(.spring(response: 0.5), value: track.id)
+                        .onTapGesture {
+                            showLyrics = true
                         }
-                    }
-                    .overlay(alignment: .bottomTrailing) {
-                        if hasLoadedLyrics && !showLyrics {
+                        .overlay(alignment: .bottomTrailing) {
                             Image(systemName: "quote.opening")
                                 .font(.caption)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(ChibiTheme.textPrimary)
                                 .padding(8)
                                 .background(ChibiTheme.softGlass, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
+                                )
                                 .padding(12)
                         }
-                    }
-                    .onChange(of: track.id) { _, _ in
-                        showLyrics = false
-                    }
 
                     Spacer().frame(height: 20)
 
@@ -217,7 +238,7 @@ struct NowPlayingView: View {
                         }
                         .foregroundStyle(ChibiTheme.textPrimary)
 
-                        HStack(spacing: 48) {
+                        HStack(spacing: 36) {
                             Button { player.toggleShuffle() } label: {
                                 Image(systemName: "shuffle")
                                     .font(.body)
@@ -230,6 +251,11 @@ struct NowPlayingView: View {
                                     .contentShape(Circle())
                             }
 
+                            // AirPlay Soft PASS — system route picker; USB DAC stays bit-perfect when selected.
+                            RoutePickerButton()
+                                .frame(width: 40, height: 40)
+                                .accessibilityLabel("Audio Output")
+
                             Button { player.cycleRepeatMode() } label: {
                                 Image(systemName: repeatIcon)
                                     .font(.body)
@@ -241,6 +267,17 @@ struct NowPlayingView: View {
                                     )
                                     .contentShape(Circle())
                             }
+
+                            Button {
+                                showAddToPlaylist = true
+                            } label: {
+                                Image(systemName: "text.badge.plus")
+                                    .font(.body)
+                                    .foregroundStyle(ChibiTheme.textSecondary)
+                                    .frame(width: 40, height: 40)
+                                    .contentShape(Circle())
+                            }
+                            .accessibilityLabel("Add to Playlist")
                         }
                     }
                     .padding(.horizontal, 20)
@@ -268,31 +305,6 @@ struct NowPlayingView: View {
         )
     }
 
-    // MARK: - Lyrics
-
-    @ViewBuilder
-    private func lyricsView(track: Track, size: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-
-            if let synced = lyrics?.synced, !synced.isEmpty {
-                SyncedLyricsView(lines: synced, currentTime: player.currentTime)
-                    .padding(20)
-            } else if let unsynced = lyrics?.unsynced, !unsynced.isEmpty {
-                ScrollView {
-                    Text(unsynced)
-                        .font(.body)
-                        .lineSpacing(6)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20)
-                }
-            } else if track.hasLyrics {
-                ProgressView()
-            }
-        }
-    }
-
     private var repeatIcon: String {
         switch player.repeatMode {
         case .off: return "repeat"
@@ -311,25 +323,24 @@ struct NowPlayingView: View {
     // MARK: - Auxiliary loads (lyrics + dominant color)
 
     private func loadAuxiliary(for track: Track) async {
-        // Lyrics
+        // Lyrics Soft PASS: cache + sidecar discovery even when hasLyrics was false at scan.
         if lyricsTrackID != track.id {
             lyrics = nil
             lyricsTrackID = track.id
-            if track.hasLyrics {
-                let loaded = await LyricsCache.load(for: track.url)
-                if lyricsTrackID == track.id {
-                    lyrics = loaded
-                }
+            let loaded = await LyricsCache.loadOrDiscover(for: track.url)
+            if lyricsTrackID == track.id {
+                lyrics = loaded
             }
         }
 
         // Dominant color — compute once per track and cache.
         if artworkColorTrackID != track.id {
             artworkColorTrackID = track.id
-            if track.hasArtwork,
+            let artAvailable = track.hasArtwork || ArtworkCache.ensureArtworkAvailable(for: track.url)
+            if artAvailable,
                let cached = ArtworkColorCache.color(for: track.url) {
                 artworkColor = cached
-            } else if track.hasArtwork {
+            } else if artAvailable {
                 let scale = UIScreen.main.scale
                 let image = await ArtworkCache.thumbnail(for: track.url,
                                                           pointSize: 80,
@@ -350,6 +361,103 @@ struct NowPlayingView: View {
                 artworkColor = .systemGray
             }
         }
+    }
+}
+
+// MARK: - Lyrics Soft PASS sheet
+
+struct LyricsSheet: View {
+    let track: Track
+    let lyrics: TrackLyrics?
+    @Environment(AudioPlayerManager.self) private var player
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                ChibiTheme.canvasDeep.ignoresSafeArea()
+
+                Group {
+                    if let synced = lyrics?.synced, !synced.isEmpty {
+                        SyncedLyricsView(lines: synced, currentTime: player.currentTime)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                    } else if let unsynced = lyrics?.unsynced, !unsynced.isEmpty {
+                        ScrollView {
+                            Text(unsynced)
+                                .font(.body)
+                                .lineSpacing(8)
+                                .foregroundStyle(ChibiTheme.textPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(24)
+                        }
+                    } else {
+                        lyricsEmptyState
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(ChibiTheme.softGlass)
+            }
+            .navigationTitle("Lyrics")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(track.title)
+                        .font(ChibiTheme.titleFont())
+                        .foregroundStyle(ChibiTheme.textPrimary)
+                        .lineLimit(1)
+                    Text(track.artist)
+                        .font(.subheadline)
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(ChibiTheme.softGlass)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(ChibiTheme.hairline)
+                        .frame(height: 1)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var lyricsEmptyState: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(ChibiTheme.canvasElevated)
+                    .frame(width: 88, height: 88)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
+                    )
+                Image(systemName: "quote.opening")
+                    .font(.system(size: 30))
+                    .foregroundStyle(ChibiTheme.amber)
+            }
+            Text("No Lyrics")
+                .font(ChibiTheme.titleFont())
+                .foregroundStyle(ChibiTheme.textPrimary)
+            Text("Embed lyrics in the file or add a matching .lrc sidecar beside the track.")
+                .font(.body)
+                .foregroundStyle(ChibiTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -386,22 +494,26 @@ struct SyncedLyricsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 8) {
+                LazyVStack(alignment: .leading, spacing: 14) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
                         Text(line.text)
                             .font(.body)
                             .fontWeight(index == activeIndex ? .semibold : .regular)
-                            .foregroundStyle(index == activeIndex ? .primary : .secondary)
-                            .opacity(index == activeIndex ? 1.0 : 0.5)
+                            .foregroundStyle(index == activeIndex ? ChibiTheme.amber : ChibiTheme.textSecondary)
+                            .opacity(index == activeIndex ? 1.0 : 0.55)
                             .id(index)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+                .padding(.vertical, 8)
             }
             .onChange(of: activeIndex) { _, newIndex in
                 withAnimation(.easeInOut(duration: 0.3)) {
                     proxy.scrollTo(newIndex, anchor: .center)
                 }
+            }
+            .onAppear {
+                proxy.scrollTo(activeIndex, anchor: .center)
             }
         }
     }

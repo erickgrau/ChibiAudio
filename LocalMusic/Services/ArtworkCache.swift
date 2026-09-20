@@ -101,6 +101,47 @@ enum ArtworkCache {
         FileManager.default.fileExists(atPath: fileURL(for: trackURL).path)
     }
 
+    /// Soft PASS folder-art names (case-insensitive) searched beside the track.
+    private static let folderArtworkNames: Set<String> = [
+        "folder.jpg", "folder.jpeg", "folder.png", "folder.webp",
+        "cover.jpg", "cover.jpeg", "cover.png", "cover.webp",
+        "albumart.jpg", "albumart.jpeg", "albumart.png",
+        "albumartsmall.jpg", "front.jpg", "front.jpeg", "front.png",
+        "artwork.jpg", "artwork.jpeg", "artwork.png"
+    ]
+
+    /// Looks for `folder.jpg` / `cover.*` (etc.) in the track’s directory.
+    /// Returns image bytes when found; does not write the cache itself.
+    static func discoverFolderArtwork(beside trackURL: URL) -> Data? {
+        guard trackURL.isFileURL else { return nil }
+        let directory = trackURL.deletingLastPathComponent()
+        let fm = FileManager.default
+        guard let contents = try? fm.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+
+        for item in contents {
+            let name = item.lastPathComponent.lowercased()
+            guard folderArtworkNames.contains(name) else { continue }
+            if let data = try? Data(contentsOf: item), !data.isEmpty {
+                return data
+            }
+        }
+        return nil
+    }
+
+    /// Ensures artwork is on disk for display Soft PASS: existing cache first,
+    /// then folder sidecar discovery. Returns whether artwork is available.
+    @discardableResult
+    static func ensureArtworkAvailable(for trackURL: URL) -> Bool {
+        if hasArtwork(for: trackURL) { return true }
+        guard let data = discoverFolderArtwork(beside: trackURL) else { return false }
+        storeSync(data, for: trackURL)
+        return true
+    }
+
     /// Persists artwork bytes to disk. Safe to call from any thread; performs
     /// the actual I/O asynchronously on a background queue.
     static func store(_ data: Data, for trackURL: URL) {

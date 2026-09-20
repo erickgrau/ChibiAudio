@@ -2,11 +2,11 @@ import SwiftUI
 
 struct RadioView: View {
     @Environment(AudioPlayerManager.self) private var player
-    @Environment(LibraryStore.self) private var library
     @State private var stations: [RadioStation] = RadioCatalog.allStations()
     @State private var customURL = ""
     @State private var customName = ""
     @State private var showAdd = false
+    @State private var addPayload: AddToPlaylistPayload?
 
     var body: some View {
         NavigationStack {
@@ -37,8 +37,14 @@ struct RadioView: View {
                             }
                         }
                         .contextMenu {
-                            Button("Add to Playlist") {
-                                addToFirstPlaylist(station)
+                            Button {
+                                addPayload = .stream(
+                                    url: station.streamURL,
+                                    title: station.name,
+                                    artist: station.genre
+                                )
+                            } label: {
+                                Label("Add to Playlist", systemImage: "text.badge.plus")
                             }
                         }
                     }
@@ -61,6 +67,9 @@ struct RadioView: View {
                 TextField("https://…", text: $customURL)
                 Button("Add") { addCustom() }
                 Button("Cancel", role: .cancel) {}
+            }
+            .sheet(item: $addPayload) { payload in
+                AddToPlaylistSheet(payload: payload)
             }
             .chibiListChrome()
             .tint(ChibiTheme.amber)
@@ -96,11 +105,5 @@ struct RadioView: View {
         stations = RadioCatalog.allStations()
         customURL = ""
         customName = ""
-    }
-
-    private func addToFirstPlaylist(_ station: RadioStation) {
-        guard var playlist = library.playlists.first else { return }
-        playlist.appendStream(url: station.streamURL, title: station.name, artist: station.genre)
-        library.savePlaylist(playlist)
     }
 }

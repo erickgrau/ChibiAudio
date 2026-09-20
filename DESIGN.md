@@ -27,7 +27,9 @@ Plex stays under **Settings → Browse Plex Music** (not a fifth tab).
 - Soft glass transport card under art
 - `SourceChip` + monospace `SampleRateChip` (PCM · kHz)
 - Pill **“Bit-perfect → THX Onyx”** when DAC mode **and** USB audio route
-- Lyrics flip still uses `.ultraThinMaterial`
+- Lyrics Soft PASS sheet (`.ultraThinMaterial` / soft glass): synced auto-scroll, unsynced text, or empty state
+- AirPlay Soft PASS: `AVRoutePickerView` on transport row
+- Add to Playlist Soft PASS sheet from Now Playing
 
 ### Library / Playlists / Radio
 - Onyx canvas, glass navigation bar

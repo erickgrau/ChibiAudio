@@ -150,10 +150,10 @@ struct PlaylistMosaicView: View {
             let urls = artworkURLs
             if urls.isEmpty {
                 ZStack {
-                    Color(white: 0.85).opacity(0.5)
+                    ChibiTheme.canvasElevated
                     Image(systemName: "music.note.list")
                         .font(.body)
-                        .foregroundStyle(Color(white: 0.55))
+                        .foregroundStyle(ChibiTheme.textTertiary)
                 }
             } else if urls.count == 1 {
                 ArtworkView(trackURL: urls[0], hasArtwork: true, pointSize: geo.size.width)
@@ -180,7 +180,7 @@ struct PlaylistMosaicView: View {
                 .frame(width: side, height: side)
                 .clipped()
         } else {
-            Color(white: 0.85).opacity(0.5)
+            ChibiTheme.canvasElevated
                 .frame(width: side, height: side)
         }
     }
