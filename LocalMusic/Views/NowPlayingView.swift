@@ -12,6 +12,7 @@ struct NowPlayingView: View {
     @State private var artworkColorTrackID: UUID?
     @State private var isSeeking = false
     @State private var seekTarget = 0.0
+    @State private var visualizerMode: VisualizerMode = .loadPersisted()
 
     var body: some View {
         NavigationStack {
@@ -110,8 +111,8 @@ struct NowPlayingView: View {
         let source = MediaSourceKind.infer(from: track.url)
 
         return GeometryReader { geo in
-            // Huge art: dominate the first viewport
-            let artworkSize = min(max(geo.size.width - 24, 0), geo.size.height * 0.52)
+            // Huge art Soft PASS: leave room for visualizer mode chrome under the hero
+            let artworkSize = min(max(geo.size.width - 24, 0), geo.size.height * 0.46)
 
             ZStack {
                 ChibiTheme.canvasDeep.ignoresSafeArea()
@@ -132,33 +133,17 @@ struct NowPlayingView: View {
                 VStack(spacing: 0) {
                     Spacer(minLength: 8)
 
-                    artworkView(track: track, size: artworkSize)
-                        .frame(width: artworkSize, height: artworkSize)
-                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.45), radius: 28, x: 0, y: 16)
-                        .animation(.spring(response: 0.5), value: track.id)
-                        .onTapGesture {
-                            showLyrics = true
-                        }
-                        .overlay(alignment: .bottomTrailing) {
-                            Image(systemName: "quote.opening")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(ChibiTheme.textPrimary)
-                                .padding(8)
-                                .background(ChibiTheme.softGlass, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .strokeBorder(ChibiTheme.hairline, lineWidth: 1)
-                                )
-                                .padding(12)
-                        }
+                    // Soft PASS visualizer suite — swipe / picker; transport stays below.
+                    VisualizerHeroView(
+                        mode: $visualizerMode,
+                        track: track,
+                        size: artworkSize,
+                        isPlaying: player.isPlaying,
+                        onLyricsTap: { showLyrics = true }
+                    )
+                    .animation(.spring(response: 0.5), value: track.id)
 
-                    Spacer().frame(height: 20)
+                    Spacer().frame(height: 12)
 
                     // Minimal chrome: title + chips
                     VStack(spacing: 8) {
@@ -290,19 +275,6 @@ struct NowPlayingView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-    }
-
-    // MARK: - Artwork
-
-    @ViewBuilder
-    private func artworkView(track: Track, size: CGFloat) -> some View {
-        ArtworkView(
-            trackURL: track.url,
-            hasArtwork: track.hasArtwork,
-            pointSize: size,
-            fullResolution: true,
-            placeholderIcon: "music.note"
-        )
     }
 
     private var repeatIcon: String {

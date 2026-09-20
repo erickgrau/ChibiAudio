@@ -56,3 +56,10 @@ Locked bar only — no visual redesign in this release.
 - **Station rows:** name, country, tags/genre, bitrate; tap to play; Add to Playlist
 - **Empty / offline** states on Soft Glass × Onyx canvas
 - HTTP media streams allowed via `NSAllowsArbitraryLoadsInMedia` (API stays HTTPS)
+
+## Soft PASS Now Playing visualizer suite
+
+- Swipeable / picker hero modes Soft PASS (transport unchanged): Album art · Track art · VU meters · 1980s LED bar · EQ spectrum · Kaleidoscope · Vectors · Vinyl · Cassette/mixtape
+- Spectrum modes Soft PASS: FFT/levels from a **parallel muted** analysis `AVPlayer` tap — main DAC playback path stays bit-perfect (no EQ insert)
+- Vinyl disc + mixtape reels animate Soft PASS while playing; label/spine use album art / track·artist
+- Last visualizer mode persisted (`nowPlayingVisualizerMode`)

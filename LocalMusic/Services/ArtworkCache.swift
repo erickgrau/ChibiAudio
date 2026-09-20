@@ -132,6 +132,55 @@ enum ArtworkCache {
         return nil
     }
 
+    /// Soft PASS track-specific sidecars: `<stem>.jpg|png|webp` beside the audio
+    /// file (not album `folder.jpg` / `cover.*`). Used by Track Art mode.
+    private static let trackArtworkExtensions: Set<String> = ["jpg", "jpeg", "png", "webp"]
+
+    /// Discovers alternate track art Soft PASS. Prefer basename match; skip
+    /// album folder art names so Track Art can differ from Album Art.
+    static func discoverTrackArtwork(beside trackURL: URL) -> Data? {
+        guard trackURL.isFileURL else { return nil }
+        let directory = trackURL.deletingLastPathComponent()
+        let stem = trackURL.deletingPathExtension().lastPathComponent
+        let fm = FileManager.default
+        guard let contents = try? fm.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+
+        // Prefer exact stem match (Song.flac → Song.jpg).
+        for item in contents {
+            let ext = item.pathExtension.lowercased()
+            guard trackArtworkExtensions.contains(ext) else { continue }
+            let name = item.deletingPathExtension().lastPathComponent
+            guard name.caseInsensitiveCompare(stem) == .orderedSame else { continue }
+            if let data = try? Data(contentsOf: item), !data.isEmpty {
+                return data
+            }
+        }
+
+        // Soft PASS fallback: `track.jpg` / `track.png` when present.
+        for item in contents {
+            let name = item.lastPathComponent.lowercased()
+            guard name == "track.jpg"
+                || name == "track.jpeg"
+                || name == "track.png"
+                || name == "track.webp"
+            else { continue }
+            if let data = try? Data(contentsOf: item), !data.isEmpty {
+                return data
+            }
+        }
+
+        return nil
+    }
+
+    /// Whether a track-specific art sidecar exists Soft PASS (independent of album cache).
+    static func hasTrackArtworkSidecar(for trackURL: URL) -> Bool {
+        discoverTrackArtwork(beside: trackURL) != nil
+    }
+
     /// Ensures artwork is on disk for display Soft PASS: existing cache first,
     /// then folder sidecar discovery. Returns whether artwork is available.
     @discardableResult

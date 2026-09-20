@@ -32,7 +32,11 @@ Plex stays under **Settings → Browse Plex Music**.
 - Mini player chrome matches Wave 1
 
 ### Now Playing
-- Huge album art (~52% viewport height), minimal chrome
+- Huge hero (~52% viewport height), minimal chrome
+- Soft PASS **visualizer suite** on the hero (swipe or glass picker); transport unchanged
+  - Album art (default) · Track art · VU · 1980s LED · EQ spectrum · Kaleidoscope · Vectors · Vinyl · Mixtape
+  - Spectrum modes meter a **parallel muted AVPlayer** tap — never EQ / mix on the DAC bit-perfect path
+  - Vinyl + mixtape animate while playing; last mode persisted
 - Soft glass transport card under art
 - `SourceChip` + monospace `SampleRateChip` (PCM · kHz)
 - Pill **“Bit-perfect → THX Onyx”** when DAC mode **and** USB audio route
@@ -64,6 +68,9 @@ Plex stays under **Settings → Browse Plex Music**.
 | `LocalMusic/Theme/TabRouter.swift` | Shared tab selection for Home shortcuts |
 | `LocalMusic/Services/RadioBrowserClient.swift` | Radio Browser mirrors, UA, cache |
 | `LocalMusic/Views/RadioView.swift` | Browse / Search / Favorites Soft PASS |
+| `LocalMusic/Models/VisualizerMode.swift` | Soft PASS Now Playing visualizer modes + persistence |
+| `LocalMusic/Services/Visualizer/*` | Parallel-bus FFT metering (DAC path untouched) |
+| `LocalMusic/Components/Visualizers/*` | Hero visualizer suite UI |
 | Views listed above | Applied chrome only — no free-v1 feature changes |
 
 ## Screenshots
@@ -73,9 +80,11 @@ iOS Simulator is not available in this Linux cloud agent environment. Capture lo
 1. Home (default) — empty library Soft PASS + Add Folder  
 2. Home — Continue card + Recent strip + playlist chips (Onyx×Glass)  
 3. Library onboarding with source chips on Onyx canvas  
-4. Now Playing with huge art + rate chip + bit-perfect pill (USB DAC connected)  
-5. Settings Audio · THX Onyx with EQ link  
-6. Equalizer dimmed under DAC mode  
+4. Now Playing visualizer Soft PASS (swipe modes; vinyl/mixtape while playing)  
+5. Now Playing rate chip + bit-perfect pill (USB DAC connected)  
+6. Radio Soft PASS — Browse / Search / Favorites (Radio Browser)  
+7. Settings Audio · THX Onyx with EQ link  
+8. Equalizer dimmed under DAC mode  
 
 ## Out of scope
 
