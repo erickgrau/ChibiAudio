@@ -17,10 +17,19 @@ Dark is the default (`preferredColorScheme(.dark)`). Light mode is optional late
 
 ## IA
 
-Tabs: **Library · Now Playing · Playlists · Radio**  
-Plex stays under **Settings → Browse Plex Music** (not a fifth tab).
+Tabs: **Home · Library · Now Playing · Playlists · Radio**  
+Settings stays under **gear** (Home / Library) — not a tab.  
+Plex stays under **Settings → Browse Plex Music**.
 
 ## Key surfaces
+
+### Home (default landing)
+- Soft glass **Continue** card (big art + title/artist) → opens Now Playing or resumes last play
+- **Recent** horizontal strip from `RecentsStore` (Documents/`recents.json`)
+- **Playlists** shortcut chips → playlist detail or Playlists tab
+- **Library** shortcuts: Folders / All tracks / Radio
+- Empty Soft PASS when no library yet (point to Add Folder)
+- Mini player chrome matches Wave 1
 
 ### Now Playing
 - Huge album art (~52% viewport height), minimal chrome
@@ -49,16 +58,21 @@ Plex stays under **Settings → Browse Plex Music** (not a fifth tab).
 |---|---|
 | `LocalMusic/Theme/ChibiTheme.swift` | Colors, materials, typography, `MediaSourceKind`, canvas helpers |
 | `LocalMusic/Components/ChibiChrome.swift` | `SourceChip`, `SampleRateChip`, `BitPerfectOnyxPill`, `DACRouteIndicator` |
+| `LocalMusic/Views/HomeView.swift` | Soft PASS Home tab |
+| `LocalMusic/Services/RecentsStore.swift` | Minimal play-history for Home Recent |
+| `LocalMusic/Theme/TabRouter.swift` | Shared tab selection for Home shortcuts |
 | Views listed above | Applied chrome only — no free-v1 feature changes |
 
 ## Screenshots
 
 iOS Simulator is not available in this Linux cloud agent environment. Capture locally after `xcodegen && open LocalMusic.xcodeproj`:
 
-1. Library onboarding with source chips on Onyx canvas  
-2. Now Playing with huge art + rate chip + bit-perfect pill (USB DAC connected)  
-3. Settings Audio · THX Onyx with EQ link  
-4. Equalizer dimmed under DAC mode  
+1. Home (default) — empty library Soft PASS + Add Folder  
+2. Home — Continue card + Recent strip + playlist chips (Onyx×Glass)  
+3. Library onboarding with source chips on Onyx canvas  
+4. Now Playing with huge art + rate chip + bit-perfect pill (USB DAC connected)  
+5. Settings Audio · THX Onyx with EQ link  
+6. Equalizer dimmed under DAC mode  
 
 ## Out of scope
 

@@ -40,3 +40,11 @@ Locked bar only — no visual redesign in this release.
 - **AirPlay:** `AVRoutePickerView` on Now Playing; `allowsExternalPlayback` kept on; USB DAC bit-perfect path unchanged
 - **Add to Playlist:** shared sheet from Now Playing / Library / Radio / Plex (pick existing or create)
 - **Polish:** Onyx×Glass placeholders, lyrics chrome, playlist mosaic empties
+
+## Soft PASS Home
+
+- **Home** first tab (default landing): Continue card, Recent, Playlists shortcuts, Library shortcuts
+- `RecentsStore` (Documents/`recents.json`) records plays for Recent / Continue fallback
+- Empty Soft PASS when no library yet → Add Folder
+- Settings remains gear sheet (not a tab); mini player chrome unchanged
+- No CarPlay / Watch / Apple Music catalog
