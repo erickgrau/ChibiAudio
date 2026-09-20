@@ -256,6 +256,9 @@ struct SettingsView: View {
 
                 Section("About") {
                     VStack(alignment: .leading, spacing: 12) {
+                        Text(AppBranding.tagline)
+                            .font(.headline)
+                            .foregroundStyle(ChibiTheme.textPrimary)
                         Text("ChibiAudio is a free fork of LocalMusic with optional Plus. Local/cloud folders, Plex, Radio Browser, and Bandcamp Subsonic need no Plus subscription. Apple Music catalog play (optional later) needs Apple Music.")
                             .font(.callout)
 

@@ -54,7 +54,7 @@ struct PaywallView: View {
             Text("ChibiAudio Plus")
                 .font(ChibiTheme.heroTitleFont())
                 .foregroundStyle(ChibiTheme.textPrimary)
-            Text("Support the app and unlock extras. Local files, Plex, Radio Browser, and core visuals stay free.")
+            Text("\(AppBranding.appStoreSubtitle). Support the app and unlock extras. Local files, Plex, Radio Browser, and core visuals stay free.")
                 .font(.body)
                 .foregroundStyle(ChibiTheme.textSecondary)
         }

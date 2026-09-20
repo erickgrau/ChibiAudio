@@ -2,6 +2,7 @@
 
 ## ChibiAudio Plus + Bandcamp + ads
 
+- **Branding lock:** display name ChibiAudio · App Store subtitle Offline HiFi Player · bundle `com.chibitek.ChibiAudio`
 - **Plus** StoreKit auto-renewable `com.chibitek.ChibiAudio.plus.monthly` ($1.99/mo): no ads, all visualizer modes, CarPlay / Watch stubs
 - **Paywall** Onyx × Soft Glass sheet with Restore Purchases (Settings + visualizer lock)
 - **Ads** free-tier banner on Home / Library / Playlists / Radio only — never Now Playing, DAC, or visualizer; no-op when `ADMOB_APP_ID` / `GADApplicationIdentifier` empty
@@ -14,7 +15,7 @@
 Locked free bar — Plus is optional on top.
 
 ### Branding
-- Display name **ChibiAudio**, bundle `com.chibitek.ChibiAudio`
+- Display name **ChibiAudio**, App Store subtitle **Offline HiFi Player**, bundle `com.chibitek.ChibiAudio`
 - Target/module remains `LocalMusic`
 - `NOTICE` credits j23n/localmusic (MPL-2.0)
 

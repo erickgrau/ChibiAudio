@@ -72,6 +72,31 @@ struct PlusStoreIDTests {
 
     @Test func productID_matchesStoreKit() {
         #expect(PlusStore.productID == "com.chibitek.ChibiAudio.plus.monthly")
+        #expect(PlusStore.productID == AppBranding.plusMonthlyProductID)
+    }
+}
+
+@Suite("App branding lock")
+struct AppBrandingTests {
+
+    @Test func lockedNames() {
+        #expect(AppBranding.displayName == "ChibiAudio")
+        #expect(AppBranding.appStoreSubtitle == "Offline HiFi Player")
+        #expect(AppBranding.bundleIdentifier == "com.chibitek.ChibiAudio")
+        #expect(AppBranding.tagline == "ChibiAudio — Offline HiFi Player")
+        #expect(!AppBranding.tagline.localizedCaseInsensitiveContains("Soft PASS"))
+    }
+
+    @Test func infoPlistDocumentsSubtitle() {
+        let subtitle = Bundle.main.object(forInfoDictionaryKey: "ChibiAudioAppStoreSubtitle") as? String
+        // Test host may not merge the app Info.plist; when present it must match.
+        if let subtitle {
+            #expect(subtitle == "Offline HiFi Player")
+        }
+        let display = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+        if let display {
+            #expect(display == "ChibiAudio")
+        }
     }
 }
 

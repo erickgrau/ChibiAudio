@@ -1,6 +1,12 @@
 # ChibiAudio
 
-**Free + optional Plus** personal iOS music player — a fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
+**Offline HiFi Player** — free + optional Plus personal iOS music player. Fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
+
+| | |
+|---|---|
+| **Display name** | ChibiAudio |
+| **App Store subtitle** | Offline HiFi Player |
+| **Bundle ID** | `com.chibitek.ChibiAudio` |
 
 LocalMusic architecture stays under `LocalMusic/` (folder picker, security-scoped bookmarks, library scan, AVPlayer queue, lyrics, lock screen / Now Playing). ChibiAudio layers branding, free-tier sources, and optional **ChibiAudio Plus** ($1.99/mo).
 
@@ -73,7 +79,7 @@ open LocalMusic.xcodeproj
 
 - Xcode 16+, iOS 18+, Swift 6
 - Set your Team under Signing & Capabilities (team ID left empty in `project.yml` on purpose)
-- Bundle ID: `com.chibitek.ChibiAudio` · Display name: **ChibiAudio**
+- Bundle ID: `com.chibitek.ChibiAudio` · Display name: **ChibiAudio** · App Store subtitle: **Offline HiFi Player**
 - Xcode target/module name remains `LocalMusic` (upstream layout)
 - Optional StoreKit testing: scheme uses `LocalMusic/Configuration/ChibiAudio.storekit`
 - Ads: leave `GADApplicationIdentifier` unset for CI; set `ADMOB_APP_ID` / plist value for release builds that link Google Mobile Ads

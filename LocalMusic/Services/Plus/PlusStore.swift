@@ -9,7 +9,7 @@ import StoreKit
 @MainActor
 final class PlusStore {
 
-    static let productID = "com.chibitek.ChibiAudio.plus.monthly"
+    static let productID = AppBranding.plusMonthlyProductID
     static let displayPriceFallback = "$1.99"
 
     private(set) var product: Product?
