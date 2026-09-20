@@ -78,12 +78,18 @@ struct PlusStoreIDTests {
 @Suite("CarPlay and Watch stubs")
 struct CompanionStubTests {
 
-    @Test func carPlay_requiresPlus_noCustomCanvas() {
+    @Test func carPlay_requiresPlus_appleAudioTemplatesOnly() {
         #expect(CarPlayAudioTemplateStub.requiresPlus)
+        #expect(CarPlayAudioTemplateStub.usesAppleAudioTemplatesOnly)
         #expect(CarPlayAudioTemplateStub.customDashCanvas == false)
         #expect(CarPlayAudioTemplateStub.visualizersOnCarPlay == false)
+        #expect(CarPlayAudioTemplateStub.supportsBrowseTemplate)
+        #expect(CarPlayAudioTemplateStub.supportsQueueTemplate)
+        #expect(CarPlayAudioTemplateStub.maximizeNowPlayingArtwork)
         #expect(CarPlayAudioTemplateStub.isUnlocked(isPlusActive: false) == false)
         #expect(CarPlayAudioTemplateStub.isUnlocked(isPlusActive: true) == true)
+        #expect(!CarPlayAudioTemplateStub.featureDetail.localizedCaseInsensitiveContains("Soft PASS"))
+        #expect(!CarPlayAudioTemplateStub.featureDetail.localizedCaseInsensitiveContains("Soft FAIL"))
     }
 
     @Test func watch_requiresPlus() {

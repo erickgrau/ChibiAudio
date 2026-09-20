@@ -22,7 +22,7 @@ See [NOTICE](NOTICE) for upstream attribution.
 | Core visuals (album art · track art) | Yes | Yes |
 | Banner ads (never over Now Playing / DAC / visualizer) | Yes* | No ads |
 | All visualizer modes (VU, LED, spectrum, kaleidoscope, vectors, vinyl, mixtape) | — | Yes |
-| CarPlay Now Playing stubs (Apple Audio templates; large art) | — | Yes |
+| CarPlay stubs (Apple Audio templates: large NP art, browse, queue) | — | Yes |
 | Apple Watch companion stubs | — | Yes |
 
 \* Ads are a no-op when `ADMOB_APP_ID` / `GADApplicationIdentifier` is empty (CI / default builds).

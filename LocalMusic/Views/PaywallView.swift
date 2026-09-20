@@ -67,7 +67,7 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: 14) {
             benefitRow(icon: "nosign", title: "Ad-free listening", detail: "No banner ads on Home, Library, Playlists, or Radio.")
             benefitRow(icon: "waveform", title: "All visualizer modes", detail: "VU, LED, spectrum, kaleidoscope, vectors, vinyl, and mixtape.")
-            benefitRow(icon: "car.fill", title: "CarPlay Now Playing", detail: "Apple Audio templates with large album art (no custom dash canvas).")
+            benefitRow(icon: "car.fill", title: "CarPlay", detail: "Apple Audio templates only — large Now Playing art, browse, and queue. No custom dash visualizers.")
             benefitRow(icon: "applewatch", title: "Apple Watch companion", detail: "Stub controls for a future Watch app — Plus unlocks the path.")
         }
         .padding(18)

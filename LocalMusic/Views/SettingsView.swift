@@ -210,7 +210,7 @@ struct SettingsView: View {
                 } header: {
                     Text("CarPlay & Watch")
                 } footer: {
-                    Text("CarPlay uses Apple Audio templates with large Now Playing art. Visualizers stay on iPhone and iPad.")
+                    Text("CarPlay uses Apple Audio templates only (large Now Playing art, browse, queue). Visualizers and vinyl/mixtape stay on iPhone and iPad — never on the dash.")
                 }
 
                 Section {

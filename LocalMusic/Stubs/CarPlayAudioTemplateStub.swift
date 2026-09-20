@@ -1,21 +1,30 @@
 import Foundation
 
-/// CarPlay Now Playing stub — Apple Audio templates only.
+/// CarPlay stub — **Apple Audio templates only** (Erick lock).
 ///
-/// - Uses `CPNowPlayingTemplate` / system audio templates when a CarPlay entitlement
-///   is added in Xcode Signing & Capabilities (not invented or bundled here).
-/// - Maximizes Now Playing artwork on the car screen.
-/// - Visualizers remain iPhone / iPad only — no custom dash canvas.
-/// - Requires ChibiAudio Plus. Dist certificates are out of scope for this repo.
+/// Maximize system templates:
+/// - `CPNowPlayingTemplate` with large Now Playing artwork
+/// - `CPListTemplate` / browse for library sections
+/// - Queue / up-next via the system Now Playing queue UI
+///
+/// Explicitly out of scope:
+/// - Custom dash canvas
+/// - Dash visualizers, vinyl, or cassette/mixtape on CarPlay
+/// - Invented Dist certificates or CarPlay entitlements in this repo
+///
+/// The full visualizer suite stays on iPhone / iPad. Requires ChibiAudio Plus.
 enum CarPlayAudioTemplateStub {
     static let requiresPlus = true
     static let usesAppleAudioTemplatesOnly = true
     static let customDashCanvas = false
     static let visualizersOnCarPlay = false
+    static let supportsBrowseTemplate = true
+    static let supportsQueueTemplate = true
+    static let maximizeNowPlayingArtwork = true
 
-    static let featureTitle = "CarPlay Now Playing"
+    static let featureTitle = "CarPlay"
     static let featureDetail =
-        "Large album art via Apple’s audio templates. Visualizers stay on your iPhone or iPad."
+        "Apple Audio templates only: large Now Playing art, browse, and queue. Visualizers stay on your iPhone or iPad — no custom dash canvas."
 
     /// Soft gate used by Settings / paywall — real `CPTemplateApplicationScene` wiring
     /// lands when the CarPlay entitlement is enabled on a developer account.

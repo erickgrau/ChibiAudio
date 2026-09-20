@@ -7,7 +7,7 @@
 - **Ads** free-tier banner on Home / Library / Playlists / Radio only — never Now Playing, DAC, or visualizer; no-op when `ADMOB_APP_ID` / `GADApplicationIdentifier` empty
 - **Bandcamp Subsonic** Settings credentials → `https://bandcamp.com/api/subsonic` purchased collection (no HTML scrape)
 - **Visualizer gate** album/track art free; VU / LED / spectrum / kaleidoscope / vectors / vinyl / mixtape require Plus
-- **CarPlay / Watch** stubs only — Apple Audio templates, maximize NP art; no Dist certs or CarPlay entitlement invented
+- **CarPlay / Watch** stubs only — Apple Audio templates (large NP art, browse, queue); phone keeps visualizer suite; no Dist certs or CarPlay entitlement invented
 
 ## Free v1 baseline (vs j23n/localmusic)
 
