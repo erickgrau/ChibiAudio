@@ -211,6 +211,33 @@ final class ArtworkCacheTests {
         #expect(ArtworkCache.discoverFolderArtwork(beside: track) == nil)
     }
 
+    // MARK: - Track artwork Soft PASS
+
+    @Test func discoverTrackArtwork_findsStemJpgBesideTrack() throws {
+        let albumDir = tempDir.appendingPathComponent("TrackArtAlbum", isDirectory: true)
+        try FileManager.default.createDirectory(at: albumDir, withIntermediateDirectories: true)
+        let track = albumDir.appendingPathComponent("MySong.flac")
+        FileManager.default.createFile(atPath: track.path, contents: Data([0x00]))
+        try writePNG(width: 8, height: 8, to: albumDir.appendingPathComponent("MySong.jpg"))
+        // Album cover should not be chosen as track art Soft PASS.
+        try writePNG(width: 8, height: 8, color: .systemOrange, to: albumDir.appendingPathComponent("cover.jpg"))
+
+        let data = try #require(ArtworkCache.discoverTrackArtwork(beside: track))
+        #expect(!data.isEmpty)
+        #expect(ArtworkCache.hasTrackArtworkSidecar(for: track))
+    }
+
+    @Test func discoverTrackArtwork_ignoresAlbumFolderArt() throws {
+        let albumDir = tempDir.appendingPathComponent("AlbumOnly", isDirectory: true)
+        try FileManager.default.createDirectory(at: albumDir, withIntermediateDirectories: true)
+        let track = albumDir.appendingPathComponent("tune.mp3")
+        FileManager.default.createFile(atPath: track.path, contents: Data([0x00]))
+        try writePNG(width: 6, height: 6, to: albumDir.appendingPathComponent("folder.png"))
+
+        #expect(ArtworkCache.discoverTrackArtwork(beside: track) == nil)
+        #expect(!ArtworkCache.hasTrackArtworkSidecar(for: track))
+    }
+
     // MARK: - Helpers
 
     /// Writes a solid-color PNG to `url`. Uses UIGraphicsImageRenderer so the

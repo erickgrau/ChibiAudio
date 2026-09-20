@@ -19,6 +19,7 @@ See [NOTICE](NOTICE) for upstream attribution. No IAP / paywall.
 | Plex personal library — prefer direct/original stream | Yes (LAN/token) |
 | Graphic EQ with presets; **bypassed** when bit-perfect / DAC mode | Yes (settings + bypass; float-PCM engine insert optional follow-up) |
 | Embedded + synced lyrics, background audio, lock screen | Yes (upstream) |
+| Now Playing visualizer suite Soft PASS (art / VU / LED / EQ / kaleidoscope / vectors / vinyl / mixtape) | Yes (parallel-bus metering; DAC path untouched) |
 | Free internet radio (Radio Browser directory + Icecast/Shoutcast URL) | Yes |
 | Apple Music *catalog* play | Optional / gated — needs user Apple Music sub; not free streaming |
 | MQA | Onyx **renderer** passthrough only — **no** licensed MQA Core decoder |
