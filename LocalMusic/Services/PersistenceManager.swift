@@ -156,7 +156,9 @@ final class PersistenceManager: @unchecked Sendable {
             album: entry.album,
             duration: entry.duration,
             hasArtwork: hasArtwork,
-            hasLyrics: hasLyrics
+            hasLyrics: hasLyrics,
+            genre: entry.genre ?? "",
+            year: entry.year
         )
     }
 
@@ -170,6 +172,8 @@ final class PersistenceManager: @unchecked Sendable {
         let duration: Double
         let hasArtwork: Bool?
         let hasLyrics: Bool?
+        let genre: String?
+        let year: Int?
         let artworkData: Data?
         let lyrics: String?
         let syncedLyrics: [SyncedLyricLine]?

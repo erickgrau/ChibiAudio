@@ -21,12 +21,13 @@ Single-target SwiftUI app with tabs: Home (default), Library, Now Playing, Playl
 LocalMusic/
   LocalMusicApp.swift         # @main; tab wiring, scene-phase rescan
   Logging.swift               # Log.<category> wrapping os.Logger
-  Models/                     # Track, Playlist, RepeatMode, SyncedLyricLine, VisualizerMode
+  Models/                     # Track, Playlist, PlaylistSeed, RepeatMode, SyncedLyricLine, VisualizerMode
   Services/                   # AudioPlayerManager, LibraryStore, PlaybackQueue,
                               # MetadataLoader, PersistenceManager, RecentsStore,
-                              # ArtworkCache, LyricsCache, Visualizer/
+                              # ArtworkCache, LyricsCache, Visualizer/, SmartPlaylist/
   Views/                      # HomeView, LibraryView, NowPlayingView, PlaylistsView,
-                              # PlaylistDetailView, MiniPlayerView, SettingsView, RadioView
+                              # SmartPlaylistView, PlaylistDetailView, MiniPlayerView,
+                              # SettingsView, RadioView
   Components/                 # ArtworkView, DocumentPicker, Visualizers/
 ```
 
@@ -34,10 +35,11 @@ LocalMusic/
 - `Services/AudioPlayerManager.swift` — `@Observable @MainActor`; wraps `AVPlayer`, owns lock-screen/Control Center integration
 - `Services/LibraryStore.swift` — `@Observable @MainActor`; slim `Track` array, debounced filter/sort pipeline, playlist CRUD
 - `Services/RecentsStore.swift` — Minimal play history for Home Recent / Continue
+- `Services/SmartPlaylist/` — Multi-seed playlist scoring + MusicBrainz/ListenBrainz enrichment
 - `Services/Visualizer/` — Soft PASS parallel-bus FFT metering (never on DAC path)
 - `Services/MetadataLoader.swift` — Recursive folder scan, ID3/iTunes metadata extraction, playlist (m3u/pls) parsing and writing
 - `Services/PersistenceManager.swift` — `@unchecked Sendable`; security-scoped folder bookmarks, JSON library cache, folder mtime
-- `Models/Track.swift`, `Playlist.swift`, `RepeatMode.swift`, `SyncedLyricLine.swift`, `VisualizerMode.swift` — slim value types
+- `Models/Track.swift`, `Playlist.swift`, `PlaylistSeed.swift`, `RepeatMode.swift`, `SyncedLyricLine.swift`, `VisualizerMode.swift` — slim value types
 
 ### Views
 
@@ -45,6 +47,7 @@ LocalMusic/
 - `Views/LibraryView.swift` — Track list with search; `TrackRow` and `NowPlayingBars` components live here
 - `Views/NowPlayingView.swift` — Full-screen player with Soft PASS visualizer hero, ambient color, synced lyrics, seek bar
 - `Views/PlaylistsView.swift` — Playlist list with creation/deletion; `PlaylistMosaicView` thumbnail component
+- `Views/SmartPlaylistView.swift` — Make a Playlist Soft PASS (seeds → generate → preview → save)
 - `Views/PlaylistDetailView.swift` — Playlist tracks with inline missing-file warnings; `AddTracksSheet`, `MissingTrackRow`
 - `Views/MiniPlayerView.swift` — Compact bottom-bar player overlay
 - `Views/SettingsView.swift` — Folder selection, rescan, stats

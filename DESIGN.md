@@ -47,7 +47,8 @@ Plex stays under **Settings → Browse Plex Music**.
 ### Library / Playlists / Radio
 - Onyx canvas, glass navigation bar
 - Radio: Browse (country / genre), Search, Favorites — Radio Browser directory + custom URL
-- Source chips on rows / onboarding (On Device · iCloud · Drive · Plex · Radio)
+- Playlists: **Make a Playlist** Soft PASS — seed picker (max 5 songs/artists), generate, preview, save, regenerate
+- Source chips on rows / onboarding (On Device · iCloud · Drive · Plex · Radio · Bandcamp)
 - Amber accent for current track / CTAs
 
 ### Settings + EQ
@@ -71,7 +72,9 @@ Plex stays under **Settings → Browse Plex Music**.
 | `LocalMusic/Models/VisualizerMode.swift` | Now Playing visualizer modes + persistence |
 | `LocalMusic/Services/Visualizer/*` | Parallel-bus FFT metering (DAC path untouched) |
 | `LocalMusic/Components/Visualizers/*` | Hero visualizer suite UI |
-| Views listed above | Applied chrome only — no free-v1 feature changes |
+| `LocalMusic/Views/SmartPlaylistView.swift` | Multi-seed playlist Soft PASS (picker / generate / preview / save) |
+| `LocalMusic/Services/SmartPlaylist/*` | Scoring engine + MusicBrainz/ListenBrainz + generation service |
+| Views listed above | Applied chrome — feature Soft PASSes listed in README / CHANGELOG |
 
 ## Screenshots
 
@@ -83,8 +86,9 @@ iOS Simulator is not available in this Linux cloud agent environment. Capture lo
 4. Now Playing visualizer (swipe modes; vinyl/mixtape while playing)  
 5. Now Playing rate chip + bit-perfect pill (USB DAC connected)  
 6. Radio — Browse / Search / Favorites (Radio Browser)  
-7. Settings Audio · THX Onyx with EQ link  
-8. Equalizer dimmed under DAC mode  
+7. Playlists — Make a Playlist seed picker + preview  
+8. Settings Audio · THX Onyx with EQ link  
+9. Equalizer dimmed under DAC mode  
 
 ## Plus / monetization chrome
 

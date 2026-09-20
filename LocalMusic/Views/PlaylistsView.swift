@@ -6,6 +6,7 @@ struct PlaylistsView: View {
     @Environment(LibraryStore.self) private var library
     @State private var showNewPlaylistAlert = false
     @State private var newPlaylistName = ""
+    @State private var showSmartPlaylist = false
 
     var body: some View {
         NavigationStack {
@@ -14,6 +15,33 @@ struct PlaylistsView: View {
                     emptyState
                 } else {
                     List {
+                        Section {
+                            Button {
+                                showSmartPlaylist = true
+                            } label: {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(ChibiTheme.amber.opacity(0.18))
+                                            .frame(width: 52, height: 52)
+                                        Image(systemName: "sparkles")
+                                            .font(.title3)
+                                            .foregroundStyle(ChibiTheme.amber)
+                                    }
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Make a Playlist")
+                                            .font(.callout)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(ChibiTheme.textPrimary)
+                                        Text("Blend up to 5 songs or artists from music you own")
+                                            .font(.caption)
+                                            .foregroundStyle(ChibiTheme.textSecondary)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+
                         ForEach(library.playlists) { playlist in
                             NavigationLink {
                                 // Binding is keyed on `playlist.id` rather than the
@@ -51,6 +79,13 @@ struct PlaylistsView: View {
                 library.refreshPlaylistsFromDisk()
             }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showSmartPlaylist = true
+                    } label: {
+                        Label("Make a Playlist", systemImage: "sparkles")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         newPlaylistName = ""
@@ -68,6 +103,9 @@ struct PlaylistsView: View {
                 }
             } message: {
                 Text("Enter a name for the new playlist.")
+            }
+            .sheet(isPresented: $showSmartPlaylist) {
+                SmartPlaylistView()
             }
             .chibiCanvas()
             .tint(ChibiTheme.amber)
@@ -87,11 +125,21 @@ struct PlaylistsView: View {
             Text("No Playlists Found")
                 .font(.title3)
                 .fontWeight(.medium)
-            Text("Tap + to create an app-owned mixed playlist (local + Plex + radio), or add .m3u / .pls files to your music folder.")
+            Text("Tap Make a Playlist to blend songs you already own, create an empty playlist with +, or add .m3u / .pls files to your music folder.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+            Button {
+                showSmartPlaylist = true
+            } label: {
+                Label("Make a Playlist", systemImage: "sparkles")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(ChibiTheme.amber)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -24,7 +24,9 @@ enum Fixtures {
         artist: String = "Artist",
         album: String = "Album",
         duration: Double = 180,
-        path: String? = nil
+        path: String? = nil,
+        genre: String = "",
+        year: Int? = nil
     ) -> Track {
         let url = URL(fileURLWithPath: path ?? "/fixtures/\(UUID().uuidString)/\(title).mp3")
         return Track(
@@ -35,7 +37,9 @@ enum Fixtures {
             album: album,
             duration: duration,
             hasArtwork: false,
-            hasLyrics: false
+            hasLyrics: false,
+            genre: genre,
+            year: year
         )
     }
 

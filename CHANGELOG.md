@@ -1,5 +1,15 @@
 # CHANGELOG (ChibiAudio fork)
 
+## Multi-seed playlists (owned library)
+
+- **Make a Playlist** Soft PASS on the Playlists tab: pick up to **5** song or artist seeds from music you already have
+- Blends the *set* of seeds (not single-track radio); candidates from local / cloud library, Plex, and Bandcamp only — never Spotify / Apple Music catalogs
+- Offline-first scoring on embedded genre / year / artist / album + playlist co-occurrence + recents
+- Optional free MusicBrainz / ListenBrainz enrichment when online (`User-Agent: ChibiAudio/1.0`, rate-limited)
+- Preview → save as app playlist → regenerate; `PlaylistLLMEnriching` hook reserved for a later house LLM (no paid keys in v1)
+- Track model gains optional `genre` / `year` from scan metadata
+- Wave 2 audio ML (Essentia / CLAP) documented in `docs/WAVE2_AUDIO_FEATURES.md` — not bundled
+
 ## ChibiAudio Plus + Bandcamp + ads
 
 - **Branding lock:** display name ChibiAudio · App Store subtitle Offline HiFi Player · bundle `com.chibitek.ChibiAudio`

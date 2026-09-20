@@ -156,6 +156,8 @@ struct MetadataLoader {
         var title = fallbackTitle
         var artist = "Unknown Artist"
         var album = "Unknown Album"
+        var genre = ""
+        var year: Int?
         var duration: Double = 0
         var artworkData: Data?
 
@@ -183,6 +185,18 @@ struct MetadataLoader {
                     if let value = try? await item.load(.stringValue), !value.isEmpty {
                         album = value
                     }
+                case .commonKeyType:
+                    // Prefer real genre tags from iTunes/ID3; skip generic media types.
+                    if let value = try? await item.load(.stringValue), !value.isEmpty {
+                        let lowered = value.lowercased()
+                        if lowered != "music", lowered != "audio", lowered != "song" {
+                            genre = value
+                        }
+                    }
+                case .commonKeyCreationDate:
+                    if let value = try? await item.load(.stringValue) {
+                        year = Self.parseYear(from: value) ?? year
+                    }
                 case .commonKeyArtwork:
                     if let data = try? await item.load(.dataValue) {
                         artworkData = data
@@ -192,6 +206,12 @@ struct MetadataLoader {
                 }
             }
         } catch { }
+
+        if genre.isEmpty || year == nil {
+            let enriched = await extractGenreAndYear(from: asset)
+            if genre.isEmpty, let g = enriched.genre, !g.isEmpty { genre = g }
+            if year == nil { year = enriched.year }
+        }
 
         // Persist artwork to disk cache instead of the in-memory Track.
         // Soft PASS order: embedded metadata → folder.jpg / cover.* → none.
@@ -236,8 +256,65 @@ struct MetadataLoader {
             album: album,
             duration: duration,
             hasArtwork: hasArtwork,
-            hasLyrics: hasLyrics
+            hasLyrics: hasLyrics,
+            genre: genre,
+            year: year
         )
+    }
+
+    /// Pull genre / year from iTunes + ID3 when common metadata is thin.
+    private static func extractGenreAndYear(from asset: AVAsset) async -> (genre: String?, year: Int?) {
+        var genre: String?
+        var year: Int?
+
+        if let items = try? await asset.loadMetadata(for: .iTunesMetadata) {
+            for item in items {
+                guard let id = item.identifier else { continue }
+                if id == .iTunesMetadataUserGenre || id == .iTunesMetadataPredefinedGenre,
+                   let value = try? await item.load(.stringValue), !value.isEmpty {
+                    genre = value
+                }
+                if id == .iTunesMetadataReleaseDate,
+                   let value = try? await item.load(.stringValue) {
+                    year = parseYear(from: value) ?? year
+                }
+            }
+        }
+
+        if genre == nil || year == nil, let items = try? await asset.loadMetadata(for: .id3Metadata) {
+            for item in items {
+                guard let id = item.identifier else { continue }
+                if id == .id3MetadataContentType,
+                   let value = try? await item.load(.stringValue), !value.isEmpty {
+                    genre = genre ?? value
+                }
+                if id == .id3MetadataRecordingTime,
+                   let value = try? await item.load(.stringValue) {
+                    year = year ?? parseYear(from: value)
+                }
+            }
+        }
+
+        return (genre, year)
+    }
+
+    /// Accepts `1999`, `1999-05-01`, ISO dates, or free-form strings with a year.
+    static func parseYear(from raw: String) -> Int? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let exact = Int(trimmed), (1900...2100).contains(exact) {
+            return exact
+        }
+        if trimmed.count >= 4 {
+            let prefix = String(trimmed.prefix(4))
+            if let y = Int(prefix), (1900...2100).contains(y) {
+                return y
+            }
+        }
+        let digits = trimmed.filter(\.isNumber)
+        if digits.count >= 4, let y = Int(String(digits.prefix(4))), (1900...2100).contains(y) {
+            return y
+        }
+        return nil
     }
 
     // MARK: - Lyrics Extraction
