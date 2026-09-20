@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Soft PASS Now Playing hero: swipeable / picker visualizer modes.
+/// Now Playing hero: swipeable / picker visualizer modes.
 /// Transport stays below; this only replaces the big art plane.
+/// Plus gates spectrum / vinyl suite; album & track art stay free.
 struct VisualizerHeroView: View {
     @Binding var mode: VisualizerMode
     let track: Track
@@ -10,13 +11,19 @@ struct VisualizerHeroView: View {
     let onLyricsTap: () -> Void
 
     @Environment(AudioPlayerManager.self) private var player
+    @Environment(PlusStore.self) private var plus
+    @State private var showPaywall = false
     private var analyzer: VisualizerAudioAnalyzer { VisualizerAudioAnalyzer.shared }
+
+    private var availableModes: [VisualizerMode] {
+        VisualizerMode.availableModes(isPlusActive: plus.isPlusActive)
+    }
 
     var body: some View {
         VStack(spacing: 10) {
             ZStack(alignment: .bottomTrailing) {
                 TabView(selection: $mode) {
-                    ForEach(VisualizerMode.allCases) { m in
+                    ForEach(availableModes) { m in
                         modeContent(m)
                             .tag(m)
                     }
@@ -35,17 +42,26 @@ struct VisualizerHeroView: View {
 
             modeChrome
         }
-        .onAppear { applyMode(mode) }
+        .onAppear { clampAndApply() }
         .onChange(of: mode) { _, newValue in
+            let clamped = VisualizerMode.clamped(newValue, isPlusActive: plus.isPlusActive)
+            if clamped != newValue {
+                mode = clamped
+                return
+            }
             newValue.persist()
             applyMode(newValue)
         }
+        .onChange(of: plus.isPlusActive) { _, _ in clampAndApply() }
         .onChange(of: player.isPlaying) { _, _ in syncAnalyzer() }
         .onChange(of: player.currentTrack?.id) { _, _ in syncAnalyzer() }
         .onDisappear {
             analyzer.setMeteringEnabled(false)
         }
         .animation(.spring(response: 0.45), value: mode)
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+        }
     }
 
     // MARK: - Mode bodies
@@ -97,13 +113,31 @@ struct VisualizerHeroView: View {
 
     private var modeChrome: some View {
         HStack(spacing: 10) {
-            // Soft glass mode picker Soft PASS
             Menu {
-                ForEach(VisualizerMode.allCases) { m in
+                ForEach(VisualizerMode.freeModes) { m in
                     Button {
                         mode = m
                     } label: {
                         Label(m.title, systemImage: m.systemImage)
+                    }
+                }
+                if plus.isPlusActive {
+                    ForEach(VisualizerMode.plusModes) { m in
+                        Button {
+                            mode = m
+                        } label: {
+                            Label(m.title, systemImage: m.systemImage)
+                        }
+                    }
+                } else {
+                    Section("ChibiAudio Plus") {
+                        ForEach(VisualizerMode.plusModes) { m in
+                            Button {
+                                showPaywall = true
+                            } label: {
+                                Label(m.title, systemImage: "lock.fill")
+                            }
+                        }
                     }
                 }
             } label: {
@@ -123,9 +157,8 @@ struct VisualizerHeroView: View {
             }
             .accessibilityLabel("Visualizer mode")
 
-            // Page dots Soft PASS
             HStack(spacing: 5) {
-                ForEach(VisualizerMode.allCases) { m in
+                ForEach(availableModes) { m in
                     Circle()
                         .fill(m == mode ? ChibiTheme.amber : ChibiTheme.textTertiary)
                         .frame(width: m == mode ? 6 : 4, height: m == mode ? 6 : 4)
@@ -133,7 +166,30 @@ struct VisualizerHeroView: View {
                 }
             }
             .accessibilityHidden(true)
+
+            if !plus.isPlusActive {
+                Button {
+                    showPaywall = true
+                } label: {
+                    Text("Plus")
+                        .font(ChibiTheme.chipFont())
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(ChibiTheme.amber, in: Capsule())
+                }
+                .accessibilityLabel("Unlock visualizer modes with Plus")
+            }
         }
+    }
+
+    private func clampAndApply() {
+        let clamped = VisualizerMode.clamped(mode, isPlusActive: plus.isPlusActive)
+        if clamped != mode {
+            mode = clamped
+        }
+        clamped.persist()
+        applyMode(clamped)
     }
 
     private func applyMode(_ m: VisualizerMode) {

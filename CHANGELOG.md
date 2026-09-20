@@ -1,14 +1,22 @@
 # CHANGELOG (ChibiAudio fork)
 
-## Free v1 — Soft PASS (vs j23n/localmusic)
+## ChibiAudio Plus + Bandcamp + ads
 
-Locked bar only — no visual redesign in this release.
+- **Plus** StoreKit auto-renewable `com.chibitek.ChibiAudio.plus.monthly` ($1.99/mo): no ads, all visualizer modes, CarPlay / Watch stubs
+- **Paywall** Onyx × Soft Glass sheet with Restore Purchases (Settings + visualizer lock)
+- **Ads** free-tier banner on Home / Library / Playlists / Radio only — never Now Playing, DAC, or visualizer; no-op when `ADMOB_APP_ID` / `GADApplicationIdentifier` empty
+- **Bandcamp Subsonic** Settings credentials → `https://bandcamp.com/api/subsonic` purchased collection (no HTML scrape)
+- **Visualizer gate** album/track art free; VU / LED / spectrum / kaleidoscope / vectors / vinyl / mixtape require Plus
+- **CarPlay / Watch** stubs only — Apple Audio templates, maximize NP art; no Dist certs or CarPlay entitlement invented
+
+## Free v1 baseline (vs j23n/localmusic)
+
+Locked free bar — Plus is optional on top.
 
 ### Branding
 - Display name **ChibiAudio**, bundle `com.chibitek.ChibiAudio`
 - Target/module remains `LocalMusic`
 - `NOTICE` credits j23n/localmusic (MPL-2.0)
-- No IAP
 
 ### Offline + cloud folders
 - Upstream Files picker + security-scoped bookmarks retained
@@ -28,12 +36,13 @@ Locked bar only — no visual redesign in this release.
 ### Free sources
 - Radio tab: Radio Browser directory (country / genre / search) + favorites + paste URL
 - Plex token browse/stream (prefer original/direct)
+- Bandcamp Subsonic purchased collection
 
 ### EQ + upstream player strengths
 - 10-band EQ + presets; bypassed when DAC/bit-perfect
 - Lyrics, background audio, lock screen unchanged from upstream
 
-## Wave 1 Soft PASS (player surfaces)
+## Wave 1 player surfaces
 
 - **Artwork:** embedded metadata → `folder.jpg` / `cover.*` sidecar → placeholder; big Now Playing hero art
 - **Lyrics:** Soft Glass sheet with synced auto-scroll, unsynced text, `.lrc` sidecar + embedded; empty state
@@ -41,15 +50,14 @@ Locked bar only — no visual redesign in this release.
 - **Add to Playlist:** shared sheet from Now Playing / Library / Radio / Plex (pick existing or create)
 - **Polish:** Onyx×Glass placeholders, lyrics chrome, playlist mosaic empties
 
-## Soft PASS Home
+## Home
 
 - **Home** first tab (default landing): Continue card, Recent, Playlists shortcuts, Library shortcuts
 - `RecentsStore` (Documents/`recents.json`) records plays for Recent / Continue fallback
-- Empty Soft PASS when no library yet → Add Folder
+- Empty state when no library yet → Add Folder
 - Settings remains gear sheet (not a tab); mini player chrome unchanged
-- No CarPlay / Watch / Apple Music catalog
 
-## Wave 2 Soft PASS (radio directory)
+## Wave 2 radio directory
 
 - **Radio Browser:** community mirrors, `User-Agent: ChibiAudio/1.0`, light list cache, click report on play
 - **Radio tab:** Browse (country + genre/tag), Search by name, Favorites (custom URL kept)
@@ -57,9 +65,9 @@ Locked bar only — no visual redesign in this release.
 - **Empty / offline** states on Soft Glass × Onyx canvas
 - HTTP media streams allowed via `NSAllowsArbitraryLoadsInMedia` (API stays HTTPS)
 
-## Soft PASS Now Playing visualizer suite
+## Now Playing visualizer suite
 
-- Swipeable / picker hero modes Soft PASS (transport unchanged): Album art · Track art · VU meters · 1980s LED bar · EQ spectrum · Kaleidoscope · Vectors · Vinyl · Cassette/mixtape
-- Spectrum modes Soft PASS: FFT/levels from a **parallel muted** analysis `AVPlayer` tap — main DAC playback path stays bit-perfect (no EQ insert)
-- Vinyl disc + mixtape reels animate Soft PASS while playing; label/spine use album art / track·artist
-- Last visualizer mode persisted (`nowPlayingVisualizerMode`)
+- Swipeable / picker hero modes (transport unchanged): Album art · Track art · VU meters · 1980s LED bar · EQ spectrum · Kaleidoscope · Vectors · Vinyl · Cassette/mixtape
+- Spectrum modes: FFT/levels from a **parallel muted** analysis `AVPlayer` tap — main DAC playback path stays bit-perfect (no EQ insert)
+- Vinyl disc + mixtape reels animate while playing; label/spine use album art / track·artist
+- Last visualizer mode persisted (`nowPlayingVisualizerMode`); Plus-only modes clamp to album art when unsubscribed

@@ -1,7 +1,8 @@
 import Foundation
 
-/// Soft PASS Now Playing hero visualizer modes.
+/// Now Playing hero visualizer modes.
 /// Persisted so the last choice survives relaunch.
+/// Core art modes are free; spectrum / vinyl suite requires ChibiAudio Plus.
 enum VisualizerMode: String, CaseIterable, Identifiable, Codable, Sendable {
     case albumArt
     case trackArt
@@ -51,6 +52,35 @@ enum VisualizerMode: String, CaseIterable, Identifiable, Codable, Sendable {
         case .albumArt, .trackArt, .vinyl, .cassette:
             return false
         }
+    }
+
+    /// Free core visuals (album / track art). Everything else is Plus.
+    var isFreeCore: Bool {
+        switch self {
+        case .albumArt, .trackArt: return true
+        default: return false
+        }
+    }
+
+    var requiresPlus: Bool { !isFreeCore }
+
+    static var freeModes: [VisualizerMode] {
+        allCases.filter(\.isFreeCore)
+    }
+
+    static var plusModes: [VisualizerMode] {
+        allCases.filter(\.requiresPlus)
+    }
+
+    /// Modes the user may select given Plus entitlement.
+    static func availableModes(isPlusActive: Bool) -> [VisualizerMode] {
+        isPlusActive ? Array(allCases) : freeModes
+    }
+
+    /// Clamp a persisted / swiped mode into what the entitlement allows.
+    static func clamped(_ mode: VisualizerMode, isPlusActive: Bool) -> VisualizerMode {
+        if mode.requiresPlus && !isPlusActive { return .albumArt }
+        return mode
     }
 
     static let defaultsKey = "nowPlayingVisualizerMode"

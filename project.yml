@@ -24,7 +24,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - LocalMusic
+      - path: LocalMusic
+        excludes:
+          - "**/*.storekit"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chibitek.ChibiAudio
@@ -91,3 +93,5 @@ schemes:
     test:
       targets:
         - LocalMusicTests
+    run:
+      storeKitConfiguration: LocalMusic/Configuration/ChibiAudio.storekit

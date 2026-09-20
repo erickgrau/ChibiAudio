@@ -6,6 +6,7 @@ struct LocalMusicApp: App {
     @State private var library = LibraryStore()
     @State private var recents = RecentsStore()
     @State private var tabs = TabRouter()
+    @State private var plus = PlusStore()
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -13,6 +14,7 @@ struct LocalMusicApp: App {
         Log.ui.info("App launched")
         let enabled = UserDefaults.standard.bool(forKey: "crashReportingEnabled")
         CrashDiagnosticsService.shared.setEnabled(enabled)
+        AdMobConfig.configureIfNeeded()
     }
 
     var body: some Scene {
@@ -22,14 +24,14 @@ struct LocalMusicApp: App {
                 set: { tabs.selected = $0 }
             )) {
                 HomeView()
-                    .miniPlayer { tabs.selected = .nowPlaying }
+                    .adAwareMiniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Home", systemImage: "house.fill")
                     }
                     .tag(ChibiTab.home)
 
                 LibraryView()
-                    .miniPlayer { tabs.selected = .nowPlaying }
+                    .adAwareMiniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Library", systemImage: "music.note.list")
                     }
@@ -42,14 +44,14 @@ struct LocalMusicApp: App {
                     .tag(ChibiTab.nowPlaying)
 
                 PlaylistsView()
-                    .miniPlayer { tabs.selected = .nowPlaying }
+                    .adAwareMiniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Playlists", systemImage: "rectangle.stack.fill")
                     }
                     .tag(ChibiTab.playlists)
 
                 RadioView()
-                    .miniPlayer { tabs.selected = .nowPlaying }
+                    .adAwareMiniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Radio", systemImage: "dot.radiowaves.left.and.right")
                     }
@@ -63,6 +65,7 @@ struct LocalMusicApp: App {
             .environment(library)
             .environment(recents)
             .environment(tabs)
+            .environment(plus)
             .onChange(of: library.tracks) { _, _ in
                 player.refreshTrackMetadata { library.track(forURL: $0) }
             }
@@ -76,6 +79,7 @@ struct LocalMusicApp: App {
                 if let url = library.folderURL {
                     player.startAccessingFolder(url)
                 }
+                await plus.refreshEntitlements()
             }
             .onChange(of: library.folderURL) { _, newValue in
                 if let url = newValue {
@@ -86,7 +90,10 @@ struct LocalMusicApp: App {
             .onChange(of: scenePhase) { _, phase in
                 Log.ui.debug("Scene phase: \(String(describing: phase))")
                 if phase == .active {
-                    Task { await library.checkForExternalChanges() }
+                    Task {
+                        await library.checkForExternalChanges()
+                        await plus.refreshEntitlements()
+                    }
                 }
             }
         }
