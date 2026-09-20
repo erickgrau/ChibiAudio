@@ -10,6 +10,9 @@
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
+		<!-- Many Radio Browser / Icecast streams are plain HTTP media. -->
+		<key>NSAllowsArbitraryLoadsInMedia</key>
+		<true/>
 	</dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

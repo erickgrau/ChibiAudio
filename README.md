@@ -19,7 +19,7 @@ See [NOTICE](NOTICE) for upstream attribution. No IAP / paywall.
 | Plex personal library — prefer direct/original stream | Yes (LAN/token) |
 | Graphic EQ with presets; **bypassed** when bit-perfect / DAC mode | Yes (settings + bypass; float-PCM engine insert optional follow-up) |
 | Embedded + synced lyrics, background audio, lock screen | Yes (upstream) |
-| Free internet radio (Icecast/Shoutcast URL + curated list) | Yes |
+| Free internet radio (Radio Browser directory + Icecast/Shoutcast URL) | Yes |
 | Apple Music *catalog* play | Optional / gated — needs user Apple Music sub; not free streaming |
 | MQA | Onyx **renderer** passthrough only — **no** licensed MQA Core decoder |
 | IAP / paywall | None |
@@ -34,7 +34,7 @@ Out of free v1: Spotify / YouTube Music–style catalogs; visual redesign; App S
 | iCloud Drive | Yes | Same picker; download-to-play when ubiquitous |
 | Google Drive (Files provider) | Yes | Install Drive app → enable in Files → pick folder |
 | App-owned mixed playlists | Yes | No sub to mix offline + Plex + radio in *our* DB |
-| Free radio (Icecast / Shoutcast URL) | Yes | Radio tab |
+| Free radio (Radio Browser + custom URL) | Yes | Radio tab: Browse / Search / Favorites |
 | Plex Media Server (your library) | Yes* | Token + LAN stream; *some remote/Plexamp features may need Plex Pass |
 | Apple Music catalog | Sub required to *play* | Optional later; gated on `canPlayCatalogContent` |
 | Spotify / YT Music catalogs | No | Out of free v1 |
@@ -93,7 +93,8 @@ open LocalMusic.xcodeproj
 | `Playlist` + `PlaylistSourceRef` | Multi-source entries |
 | `AppPlaylistStore` | App-owned JSON playlists |
 | `PlexClient` | PMS sections + prefer-original stream URLs |
-| `RadioCatalog` | Curated + user stream URLs |
+| `RadioBrowserClient` | Radio Browser mirrors, search, light cache |
+| `RadioCatalog` | Favorites + curated + user stream URLs |
 | `MetadataLoader` / `PersistenceManager` / lyrics / artwork | Upstream |
 
 ## Changelog vs upstream

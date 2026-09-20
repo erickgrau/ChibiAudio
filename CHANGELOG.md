@@ -26,7 +26,7 @@ Locked bar only — no visual redesign in this release.
 - App-owned JSON playlists; m3u keeps http URLs
 
 ### Free sources
-- Radio tab (curated + paste URL)
+- Radio tab: Radio Browser directory (country / genre / search) + favorites + paste URL
 - Plex token browse/stream (prefer original/direct)
 
 ### EQ + upstream player strengths
@@ -48,3 +48,11 @@ Locked bar only — no visual redesign in this release.
 - Empty Soft PASS when no library yet → Add Folder
 - Settings remains gear sheet (not a tab); mini player chrome unchanged
 - No CarPlay / Watch / Apple Music catalog
+
+## Wave 2 Soft PASS (radio directory)
+
+- **Radio Browser:** community mirrors, `User-Agent: ChibiAudio/1.0`, light list cache, click report on play
+- **Radio tab:** Browse (country + genre/tag), Search by name, Favorites (custom URL kept)
+- **Station rows:** name, country, tags/genre, bitrate; tap to play; Add to Playlist
+- **Empty / offline** states on Soft Glass × Onyx canvas
+- HTTP media streams allowed via `NSAllowsArbitraryLoadsInMedia` (API stays HTTPS)
