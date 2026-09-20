@@ -5,7 +5,6 @@ struct HomeView: View {
     // Avoid observing the player at the root (0.5s ticks). Continue card
     // reads player state in a nested view.
     @Environment(LibraryStore.self) private var library
-    @Environment(RecentsStore.self) private var recents
     @Environment(TabRouter.self) private var tabs
 
     @State private var showSettings = false
