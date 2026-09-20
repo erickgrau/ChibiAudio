@@ -5,8 +5,7 @@ struct LocalMusicApp: App {
     @State private var player = AudioPlayerManager()
     @State private var library = LibraryStore()
     @State private var recents = RecentsStore()
-    /// Soft PASS: Home is the default landing tab.
-    @State private var selectedTab = ChibiTab.home.rawValue
+    @State private var tabs = TabRouter()
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -18,40 +17,43 @@ struct LocalMusicApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabView(selection: $selectedTab) {
+            TabView(selection: Binding(
+                get: { tabs.selected },
+                set: { tabs.selected = $0 }
+            )) {
                 HomeView()
-                    .miniPlayer { selectedTab = ChibiTab.nowPlaying.rawValue }
+                    .miniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Home", systemImage: "house.fill")
                     }
-                    .tag(ChibiTab.home.rawValue)
+                    .tag(ChibiTab.home)
 
                 LibraryView()
-                    .miniPlayer { selectedTab = ChibiTab.nowPlaying.rawValue }
+                    .miniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Library", systemImage: "music.note.list")
                     }
-                    .tag(ChibiTab.library.rawValue)
+                    .tag(ChibiTab.library)
 
                 NowPlayingView()
                     .tabItem {
                         Label("Now Playing", systemImage: "play.circle.fill")
                     }
-                    .tag(ChibiTab.nowPlaying.rawValue)
+                    .tag(ChibiTab.nowPlaying)
 
                 PlaylistsView()
-                    .miniPlayer { selectedTab = ChibiTab.nowPlaying.rawValue }
+                    .miniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Playlists", systemImage: "rectangle.stack.fill")
                     }
-                    .tag(ChibiTab.playlists.rawValue)
+                    .tag(ChibiTab.playlists)
 
                 RadioView()
-                    .miniPlayer { selectedTab = ChibiTab.nowPlaying.rawValue }
+                    .miniPlayer { tabs.selected = .nowPlaying }
                     .tabItem {
                         Label("Radio", systemImage: "dot.radiowaves.left.and.right")
                     }
-                    .tag(ChibiTab.radio.rawValue)
+                    .tag(ChibiTab.radio)
             }
             .tint(ChibiTheme.amber)
             .toolbarBackground(ChibiTheme.softGlass, for: .tabBar)
@@ -60,9 +62,7 @@ struct LocalMusicApp: App {
             .environment(player)
             .environment(library)
             .environment(recents)
-            .environment(\.chibiSelectTab) { tab in
-                selectedTab = tab.rawValue
-            }
+            .environment(tabs)
             .onChange(of: library.tracks) { _, _ in
                 player.refreshTrackMetadata { library.track(forURL: $0) }
             }

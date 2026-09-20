@@ -60,6 +60,7 @@ Plex stays under **Settings → Browse Plex Music**.
 | `LocalMusic/Components/ChibiChrome.swift` | `SourceChip`, `SampleRateChip`, `BitPerfectOnyxPill`, `DACRouteIndicator` |
 | `LocalMusic/Views/HomeView.swift` | Soft PASS Home tab |
 | `LocalMusic/Services/RecentsStore.swift` | Minimal play-history for Home Recent |
+| `LocalMusic/Theme/TabRouter.swift` | Shared tab selection for Home shortcuts |
 | Views listed above | Applied chrome only — no free-v1 feature changes |
 
 ## Screenshots

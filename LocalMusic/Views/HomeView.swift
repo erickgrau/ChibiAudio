@@ -6,7 +6,7 @@ struct HomeView: View {
     // reads player state in a nested view.
     @Environment(LibraryStore.self) private var library
     @Environment(RecentsStore.self) private var recents
-    @Environment(\.chibiSelectTab) private var selectTab
+    @Environment(TabRouter.self) private var tabs
 
     @State private var showSettings = false
     @State private var showFolderPicker = false
@@ -26,7 +26,7 @@ struct HomeView: View {
                     }
 
                     ContinueCard(
-                        onOpenNowPlaying: { selectTab(.nowPlaying) },
+                        onOpenNowPlaying: { tabs.selected = .nowPlaying },
                         onChooseFolder: { showFolderPicker = true }
                     )
 
@@ -38,8 +38,8 @@ struct HomeView: View {
 
                     LibraryShortcutsSection(
                         onFolders: { showFolderPicker = true },
-                        onAllTracks: { selectTab(.library) },
-                        onRadio: { selectTab(.radio) }
+                        onAllTracks: { tabs.selected = .library },
+                        onRadio: { tabs.selected = .radio }
                     )
                 }
                 .padding(.horizontal, 16)
@@ -320,7 +320,7 @@ private struct RecentSection: View {
 
 private struct PlaylistsShortcutSection: View {
     @Environment(LibraryStore.self) private var library
-    @Environment(\.chibiSelectTab) private var selectTab
+    @Environment(TabRouter.self) private var tabs
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -328,7 +328,7 @@ private struct PlaylistsShortcutSection: View {
                 sectionHeader("Playlists")
                 Spacer()
                 Button("See All") {
-                    selectTab(.playlists)
+                    tabs.selected = .playlists
                 }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(ChibiTheme.amber)
@@ -454,25 +454,4 @@ private func sectionHeader(_ title: String) -> some View {
     Text(title)
         .font(.title3.weight(.semibold))
         .foregroundStyle(ChibiTheme.textPrimary)
-}
-
-// MARK: - Tab selection environment
-
-enum ChibiTab: Int, Hashable, Sendable {
-    case home = 0
-    case library = 1
-    case nowPlaying = 2
-    case playlists = 3
-    case radio = 4
-}
-
-private struct ChibiSelectTabKey: EnvironmentKey {
-    static let defaultValue: (ChibiTab) -> Void = { _ in }
-}
-
-extension EnvironmentValues {
-    var chibiSelectTab: (ChibiTab) -> Void {
-        get { self[ChibiSelectTabKey.self] }
-        set { self[ChibiSelectTabKey.self] = newValue }
-    }
 }
