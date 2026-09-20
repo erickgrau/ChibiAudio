@@ -42,6 +42,7 @@ Plex stays under **Settings → Browse Plex Music**.
 
 ### Library / Playlists / Radio
 - Onyx canvas, glass navigation bar
+- Radio: Browse (country / genre), Search, Favorites — Radio Browser directory + custom URL
 - Source chips on rows / onboarding (On Device · iCloud · Drive · Plex · Radio)
 - Amber accent for current track / CTAs
 
@@ -61,6 +62,8 @@ Plex stays under **Settings → Browse Plex Music**.
 | `LocalMusic/Views/HomeView.swift` | Soft PASS Home tab |
 | `LocalMusic/Services/RecentsStore.swift` | Minimal play-history for Home Recent |
 | `LocalMusic/Theme/TabRouter.swift` | Shared tab selection for Home shortcuts |
+| `LocalMusic/Services/RadioBrowserClient.swift` | Radio Browser mirrors, UA, cache |
+| `LocalMusic/Views/RadioView.swift` | Browse / Search / Favorites Soft PASS |
 | Views listed above | Applied chrome only — no free-v1 feature changes |
 
 ## Screenshots
