@@ -24,5 +24,16 @@
 	</dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.chibitek.ChibiAudio</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>chibiaudio</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

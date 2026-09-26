@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import LocalMusic
 
-struct RadioBrowserClientTests {
+@MainActor struct RadioBrowserClientTests {
 
     @Test func decodeStationsPrefersResolvedURLAndUUID() throws {
         let json = """

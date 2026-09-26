@@ -188,7 +188,7 @@ struct PlaylistDetailView: View {
                 case .needsAppleMusicSubscription:
                     label = "\(entry.source.displayTitle) — needs Apple Music"
                 case .needsPlexServer:
-                    label = "\(entry.source.displayTitle) — configure Plex in Settings"
+                    label = "\(entry.source.displayTitle) — sign in with Plex"
                 case .unsupported:
                     label = entry.source.displayTitle
                 case .playable:

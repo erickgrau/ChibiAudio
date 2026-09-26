@@ -33,7 +33,7 @@ final class PersistenceManagerTests {
         LyricsCache.directoryOverride = lyricsOverride
     }
 
-    deinit {
+    isolated deinit {
         ArtworkCache.directoryOverride = nil
         LyricsCache.directoryOverride = nil
         defaults.removePersistentDomain(forName: defaultsName)

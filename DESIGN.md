@@ -13,13 +13,13 @@ Plus paywall and Bandcamp browser follow the same tokens.
 | Teal | `#2EC4B6` | USB / DAC connected, bit-perfect pill |
 | Type | SF Mono (`.monospaced`) | Sample-rate chip next to transport |
 
-Dark is the default (`preferredColorScheme(.dark)`). Light mode is optional later — not in this PR.
+Light is the default (warm cream `#F4F1EA`). Dark is Onyx. Settings: Light / Dark / System.
 
 ## IA
 
 Tabs: **Home · Library · Now Playing · Playlists · Radio**  
 Settings stays under **gear** (Home / Library) — not a tab.  
-Plex stays under **Settings → Browse Plex Music**.
+Plex is **Continue with Plex** (PIN on Plex’s page). Settings keeps signed-in / Sign out.
 
 ## Key surfaces
 
@@ -98,5 +98,5 @@ iOS Simulator is not available in this Linux cloud agent environment. Capture lo
 
 ## Out of scope
 
-- Light mode default, MQA Core UI, Spotify, inventing Dist certs or CarPlay entitlements
+- MQA Core UI, Spotify, inventing Dist certs or CarPlay entitlements
 - Custom CarPlay dash canvas (Apple Audio templates only; visualizers stay on phone/tablet)
