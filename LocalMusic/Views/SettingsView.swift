@@ -24,6 +24,7 @@ struct SettingsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showFolderPicker = false
     @State private var showPaywall = false
+    @State private var showWhatsNew = false
     @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
     @AppStorage(DACSession.dacModeDefaultsKey) private var dacModeEnabled = false
     @State private var showPlexSignIn = false
@@ -276,6 +277,11 @@ struct SettingsView: View {
                     } label: {
                         Label("Logs", systemImage: "doc.text.magnifyingglass")
                     }
+                    Button {
+                        showWhatsNew = true
+                    } label: {
+                        Label("What's New", systemImage: "sparkles")
+                    }
                     LabeledContent("Version", value: appVersion)
                 }
 
@@ -333,9 +339,6 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showFolderPicker) {
                 DocumentPicker { pickerURL in
-                    // The picker's URL carries a transient security scope that
-                    // must be claimed and turned into a bookmark synchronously
-                    // here; the rescan can then run as a Task.
                     _ = pickerURL.startAccessingSecurityScopedResource()
                     PersistenceManager.shared.saveFolderBookmark(pickerURL)
                     pickerURL.stopAccessingSecurityScopedResource()
@@ -346,6 +349,11 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
+            }
+            .sheet(isPresented: $showWhatsNew) {
+                WhatsNewView(releases: WhatsNew.all, showsArchive: true) {
+                    showWhatsNew = false
+                }
             }
             .onChange(of: crashReportingEnabled) { _, newValue in
                 crashService.setEnabled(newValue)

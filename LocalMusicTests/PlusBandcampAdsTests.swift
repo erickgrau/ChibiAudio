@@ -3,7 +3,7 @@ import Testing
 @testable import LocalMusic
 
 @Suite("Bandcamp Subsonic JSON")
-struct BandcampSubsonicClientTests {
+@MainActor struct BandcampSubsonicClientTests {
 
     @Test func statusOK_parsesOkResponse() throws {
         let json = """
@@ -68,7 +68,7 @@ struct AdMobConfigTests {
 }
 
 @Suite("Plus product ID")
-struct PlusStoreIDTests {
+@MainActor struct PlusStoreIDTests {
 
     @Test func productID_matchesStoreKit() {
         #expect(PlusStore.productID == "com.chibitek.ChibiAudio.plus.monthly")

@@ -8,6 +8,7 @@ struct LocalMusicApp: App {
     @State private var tabs = TabRouter()
     @State private var plus = PlusStore()
     @State private var appearance = AppearanceStore()
+    @State private var showWhatsNew = false
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -69,6 +70,11 @@ struct LocalMusicApp: App {
             .environment(plus)
             .environment(appearance)
             .preferredColorScheme(appearance.preferredColorScheme)
+            .sheet(isPresented: $showWhatsNew, onDismiss: { WhatsNew.markSeen() }) {
+                WhatsNewView(releases: Array(WhatsNew.unseen.prefix(1))) {
+                    showWhatsNew = false
+                }
+            }
             .onChange(of: library.tracks) { _, _ in
                 player.refreshTrackMetadata { library.track(forURL: $0) }
             }
@@ -83,6 +89,10 @@ struct LocalMusicApp: App {
                     player.startAccessingFolder(url)
                 }
                 await plus.refreshEntitlements()
+                if WhatsNew.hasUnseen {
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    showWhatsNew = true
+                }
             }
             .onChange(of: library.folderURL) { _, newValue in
                 if let url = newValue {
