@@ -51,6 +51,47 @@ struct VisualizerModeTests {
     }
 }
 
+@Suite("VisualizerAudioAnalyzer")
+struct VisualizerAudioAnalyzerTests {
+
+    @Test func isLiveSource_fileURLsAreNotLive() {
+        let fileURL = URL(fileURLWithPath: "/Library/Music/track.m4a")
+        #expect(VisualizerAudioAnalyzer.isLiveSource(fileURL) == false)
+    }
+
+    @Test func isLiveSource_remoteURLsAreLive() {
+        let radioURL = URL(string: "https://stream.example.com/radio.aac")!
+        #expect(VisualizerAudioAnalyzer.isLiveSource(radioURL) == true)
+
+        let httpURL = URL(string: "http://relay.example.net:8000/live.mp3")!
+        #expect(VisualizerAudioAnalyzer.isLiveSource(httpURL) == true)
+    }
+}
+
+@Suite("Cassette")
+struct CassetteShapeTests {
+
+    @Test func trapezoid_pathIsNonEmpty() {
+        let shape = CustomShapeCassetteTrapezoid()
+        let path = shape.path(in: CGRect(x: 0, y: 0, width: 100, height: 30))
+        #expect(path.isEmpty == false)
+        #expect(path.boundingRect.width > 0)
+        #expect(path.boundingRect.height > 0)
+    }
+
+    @Test func trapezoid_narrowsTowardTop() {
+        let shape = CustomShapeCassetteTrapezoid()
+        let rect = CGRect(x: 0, y: 0, width: 100, height: 30)
+        let path = shape.path(in: rect)
+        // Bottom corners lie inside the path...
+        #expect(path.contains(CGPoint(x: 1, y: 29)))
+        #expect(path.contains(CGPoint(x: 99, y: 29)))
+        // ...while the top outer corners are cut away by the inset.
+        #expect(path.contains(CGPoint(x: 1, y: 1)) == false)
+        #expect(path.contains(CGPoint(x: 99, y: 1)) == false)
+    }
+}
+
 @Suite("VisualizerFFT")
 struct VisualizerFFTTests {
 

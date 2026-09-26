@@ -24,7 +24,7 @@ final class WhatsNewTests: XCTestCase {
 
     func testLatestReleaseHasMotivationsAndChanges() {
         let latest = WhatsNew.latest
-        XCTAssertEqual(latest.version, "1.1.0")
+        XCTAssertEqual(latest.version, "1.2.0")
         XCTAssertFalse(latest.headline.isEmpty)
         XCTAssertFalse(latest.why.isEmpty, "Motivations must be provided per standing rules")
         XCTAssertFalse(latest.changes.isEmpty)
@@ -32,7 +32,7 @@ final class WhatsNewTests: XCTestCase {
 
     func testUnseenFilterAndMarkSeen() {
         XCTAssertTrue(WhatsNew.hasUnseen)
-        XCTAssertEqual(WhatsNew.unseen.first?.version, "1.1.0")
+        XCTAssertEqual(WhatsNew.unseen.first?.version, "1.2.0")
 
         WhatsNew.markSeen()
         XCTAssertFalse(WhatsNew.hasUnseen)

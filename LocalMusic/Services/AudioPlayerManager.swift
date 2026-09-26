@@ -75,6 +75,11 @@ final class AudioPlayerManager {
         repeatMode = storedMode
         queue.shuffleEnabled = storedShuffle
         queue.repeatMode = storedMode
+        // Live-source metering (radio / remote streams): the visualizer taps
+        // our own AVPlayerItem instead of opening a second network connection.
+        VisualizerAudioAnalyzer.shared.liveItemProvider = { [weak self] in
+            self?.player?.currentItem
+        }
         configureAudioSession()
         configureRemoteCommands()
         observeAudioSessionEvents()

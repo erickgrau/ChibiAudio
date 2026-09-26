@@ -108,11 +108,15 @@ struct NowPlayingView: View {
 
     private func nowPlayingContent(track: Track) -> some View {
         let color = Color(artworkColor)
-        let source = MediaSourceKind.infer(from: track.url)
 
         return GeometryReader { geo in
-            // Huge art Soft PASS: leave room for visualizer mode chrome under the hero
-            let artworkSize = min(max(geo.size.width - 24, 0), geo.size.height * 0.46)
+            // Landscape uses the full screen: hero sized to the height, chrome beside it.
+            let isLandscape = geo.size.width > geo.size.height
+            // Huge art Soft PASS: leave room for visualizer mode chrome under the hero.
+            // Landscape: hero fills the screen height edge to edge (chrome sits under it).
+            let artworkSize = isLandscape
+                ? geo.size.height * 0.9
+                : min(max(geo.size.width - 24, 0), geo.size.height * 0.46)
 
             ZStack {
                 ChibiTheme.canvasDeep.ignoresSafeArea()
@@ -130,150 +134,218 @@ struct NowPlayingView: View {
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 0.8), value: track.id)
 
-                VStack(spacing: 0) {
-                    Spacer(minLength: 8)
-
-                    // Soft PASS visualizer suite — swipe / picker; transport stays below.
-                    VisualizerHeroView(
-                        mode: $visualizerMode,
-                        track: track,
-                        size: artworkSize,
-                        isPlaying: player.isPlaying,
-                        onLyricsTap: { showLyrics = true }
-                    )
-                    .animation(.spring(response: 0.5), value: track.id)
-
-                    Spacer().frame(height: 12)
-
-                    // Minimal chrome: title + chips
-                    VStack(spacing: 8) {
-                        Text(track.title)
-                            .font(ChibiTheme.heroTitleFont())
-                            .foregroundStyle(ChibiTheme.textPrimary)
-                            .lineLimit(1)
-                        Text(track.artist)
-                            .font(.body)
-                            .foregroundStyle(ChibiTheme.textSecondary)
-                            .lineLimit(1)
-
-                        HStack(spacing: 8) {
-                            SourceChip(kind: source)
-                            SampleRateChip(sampleRateHz: max(routeInfo.currentSampleRate, 44_100))
-                        }
-
-                        if showBitPerfectPill {
-                            BitPerfectOnyxPill()
-                                .padding(.top, 2)
-                        } else {
-                            DACRouteIndicator(summary: routeInfo.summary, isUSB: routeInfo.isUSBAudio)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-
-                    Spacer().frame(height: 18)
-
-                    // Transport glass strip
-                    VStack(spacing: 14) {
-                        VStack(spacing: 4) {
-                            Slider(
-                                value: Binding(
-                                    get: { displayedTime },
-                                    set: { seekTarget = $0 }
-                                ),
-                                in: 0...max(player.duration, 1),
-                                onEditingChanged: { editing in
-                                    if editing {
-                                        isSeeking = true
-                                        seekTarget = player.currentTime
-                                    } else {
-                                        player.seek(to: seekTarget)
-                                        isSeeking = false
-                                    }
-                                }
-                            )
-                            .tint(ChibiTheme.amber)
-
-                            HStack {
-                                Text(formatTime(displayedTime))
-                                    .font(ChibiTheme.sampleRateFont())
-                                    .foregroundStyle(ChibiTheme.textSecondary)
-                                Spacer()
-                                Text("-\(formatTime(max(0, player.duration - displayedTime)))")
-                                    .font(ChibiTheme.sampleRateFont())
-                                    .foregroundStyle(ChibiTheme.textSecondary)
-                            }
-                        }
-
-                        HStack(spacing: 44) {
-                            Button { player.previous() } label: {
-                                Image(systemName: "backward.end.fill")
-                                    .font(.system(size: 26))
-                            }
-
-                            Button { player.togglePlayPause() } label: {
-                                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                    .font(.system(size: 42))
-                                    .contentTransition(.symbolEffect(.replace))
-                            }
-
-                            Button { player.next() } label: {
-                                Image(systemName: "forward.end.fill")
-                                    .font(.system(size: 26))
-                            }
-                        }
-                        .foregroundStyle(ChibiTheme.textPrimary)
-
-                        HStack(spacing: 36) {
-                            Button { player.toggleShuffle() } label: {
-                                Image(systemName: "shuffle")
-                                    .font(.body)
-                                    .foregroundStyle(player.shuffleEnabled ? ChibiTheme.amber : ChibiTheme.textSecondary)
-                                    .frame(width: 40, height: 40)
-                                    .background(
-                                        Circle()
-                                            .fill(player.shuffleEnabled ? ChibiTheme.amber.opacity(0.15) : .clear)
-                                    )
-                                    .contentShape(Circle())
-                            }
-
-                            // AirPlay Soft PASS — system route picker; USB DAC stays bit-perfect when selected.
-                            RoutePickerButton()
-                                .frame(width: 40, height: 40)
-                                .accessibilityLabel("Audio Output")
-
-                            Button { player.cycleRepeatMode() } label: {
-                                Image(systemName: repeatIcon)
-                                    .font(.body)
-                                    .foregroundStyle(player.repeatMode != .off ? ChibiTheme.amber : ChibiTheme.textSecondary)
-                                    .frame(width: 40, height: 40)
-                                    .background(
-                                        Circle()
-                                            .fill(player.repeatMode != .off ? ChibiTheme.amber.opacity(0.15) : .clear)
-                                    )
-                                    .contentShape(Circle())
-                            }
-
-                            Button {
-                                showAddToPlaylist = true
-                            } label: {
-                                Image(systemName: "text.badge.plus")
-                                    .font(.body)
-                                    .foregroundStyle(ChibiTheme.textSecondary)
-                                    .frame(width: 40, height: 40)
-                                    .contentShape(Circle())
-                            }
-                            .accessibilityLabel("Add to Playlist")
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .chibiGlassCard(cornerRadius: 22)
-                    .padding(.horizontal, 16)
-
-                    Spacer(minLength: 12)
+                if isLandscape {
+                    landscapeBody(track: track, heroSize: artworkSize)
+                } else {
+                    portraitBody(track: track, heroSize: artworkSize)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+
+    /// Radio streams have no seekable duration; show LIVE instead of a dead slider.
+    private var isLiveStream: Bool {
+        player.duration.isNaN || player.duration <= 0
+    }
+
+    // MARK: - Portrait layout
+
+    private func portraitBody(track: Track, heroSize: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 8)
+
+            // Soft PASS visualizer suite — swipe / picker; transport stays below.
+            VisualizerHeroView(
+                mode: $visualizerMode,
+                track: track,
+                size: heroSize,
+                isPlaying: player.isPlaying,
+                onLyricsTap: { showLyrics = true }
+            )
+            .animation(.spring(response: 0.5), value: track.id)
+
+            Spacer().frame(height: 12)
+
+            titleChipsBlock(for: track)
+                .padding(.horizontal, 20)
+
+            Spacer().frame(height: 18)
+
+            transportCard
+
+            Spacer(minLength: 12)
+        }
+    }
+
+    // MARK: - Landscape layout (full-bleed)
+
+    private func landscapeBody(track: Track, heroSize: CGFloat) -> some View {
+        HStack(spacing: 24) {
+            VisualizerHeroView(
+                mode: $visualizerMode,
+                track: track,
+                size: heroSize,
+                isPlaying: player.isPlaying,
+                onLyricsTap: { showLyrics = true }
+            )
+            .animation(.spring(response: 0.5), value: track.id)
+
+            VStack(spacing: 16) {
+                titleChipsBlock(for: track)
+
+                transportCard
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 12)
+    }
+
+    // MARK: - Shared chrome
+
+    private func titleChipsBlock(for track: Track) -> some View {
+        let source = MediaSourceKind.infer(from: track.url)
+
+        return VStack(spacing: 8) {
+            Text(track.title)
+                .font(ChibiTheme.heroTitleFont())
+                .foregroundStyle(ChibiTheme.textPrimary)
+                .lineLimit(1)
+            Text(track.artist)
+                .font(.body)
+                .foregroundStyle(ChibiTheme.textSecondary)
+                .lineLimit(1)
+
+            HStack(spacing: 8) {
+                SourceChip(kind: source)
+                SampleRateChip(sampleRateHz: max(routeInfo.currentSampleRate, 44_100))
+            }
+
+            if showBitPerfectPill {
+                BitPerfectOnyxPill()
+                    .padding(.top, 2)
+            } else {
+                DACRouteIndicator(summary: routeInfo.summary, isUSB: routeInfo.isUSBAudio)
+            }
+        }
+    }
+
+    /// Transport glass strip: seek bar (or LIVE pill on streams) + controls.
+    private var transportCard: some View {
+        VStack(spacing: 14) {
+            seekBar
+
+            HStack(spacing: 44) {
+                Button { player.previous() } label: {
+                    Image(systemName: "backward.end.fill")
+                        .font(.system(size: 26))
+                }
+
+                Button { player.togglePlayPause() } label: {
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 42))
+                        .contentTransition(.symbolEffect(.replace))
+                }
+
+                Button { player.next() } label: {
+                    Image(systemName: "forward.end.fill")
+                        .font(.system(size: 26))
+                }
+            }
+            .foregroundStyle(ChibiTheme.textPrimary)
+
+            HStack(spacing: 36) {
+                Button { player.toggleShuffle() } label: {
+                    Image(systemName: "shuffle")
+                        .font(.body)
+                        .foregroundStyle(player.shuffleEnabled ? ChibiTheme.amber : ChibiTheme.textSecondary)
+                        .frame(width: 40, height: 40)
+                        .background(
+                            Circle()
+                                .fill(player.shuffleEnabled ? ChibiTheme.amber.opacity(0.15) : .clear)
+                        )
+                        .contentShape(Circle())
+                }
+
+                // AirPlay Soft PASS — system route picker; USB DAC stays bit-perfect when selected.
+                RoutePickerButton()
+                    .frame(width: 40, height: 40)
+                    .accessibilityLabel("Audio Output")
+
+                Button { player.cycleRepeatMode() } label: {
+                    Image(systemName: repeatIcon)
+                        .font(.body)
+                        .foregroundStyle(player.repeatMode != .off ? ChibiTheme.amber : ChibiTheme.textSecondary)
+                        .frame(width: 40, height: 40)
+                        .background(
+                            Circle()
+                                .fill(player.repeatMode != .off ? ChibiTheme.amber.opacity(0.15) : .clear)
+                        )
+                        .contentShape(Circle())
+                }
+
+                Button {
+                    showAddToPlaylist = true
+                } label: {
+                    Image(systemName: "text.badge.plus")
+                        .font(.body)
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                        .frame(width: 40, height: 40)
+                        .contentShape(Circle())
+                }
+                .accessibilityLabel("Add to Playlist")
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .chibiGlassCard(cornerRadius: 22)
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private var seekBar: some View {
+        if isLiveStream {
+            // Live stream: no duration to scrub — signal it instead of a dead slider.
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(ChibiTheme.amber)
+                    .frame(width: 8, height: 8)
+                Text("LIVE")
+                    .font(ChibiTheme.chipFont())
+                    .fontWeight(.semibold)
+                    .foregroundStyle(ChibiTheme.amber)
+                Spacer()
+            }
+        } else {
+            VStack(spacing: 4) {
+                Slider(
+                    value: Binding(
+                        get: { displayedTime },
+                        set: { seekTarget = $0 }
+                    ),
+                    in: 0...max(player.duration, 1),
+                    onEditingChanged: { editing in
+                        if editing {
+                            isSeeking = true
+                            seekTarget = player.currentTime
+                        } else {
+                            player.seek(to: seekTarget)
+                            isSeeking = false
+                        }
+                    }
+                )
+                .tint(ChibiTheme.amber)
+
+                HStack {
+                    Text(formatTime(displayedTime))
+                        .font(ChibiTheme.sampleRateFont())
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                    Spacer()
+                    Text("-\(formatTime(max(0, player.duration - displayedTime)))")
+                        .font(ChibiTheme.sampleRateFont())
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                }
+            }
         }
     }
 
