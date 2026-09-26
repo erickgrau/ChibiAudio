@@ -46,6 +46,12 @@ enum PlaylistSourceRef: Codable, Equatable, Hashable, Sendable {
         case .appleMusic: return "Apple Music"
         }
     }
+
+    /// Only local-file entries are indexed by `LibraryStore`, so rename/share (which key off that index) only apply here.
+    var isLocalFile: Bool {
+        if case .localFile = self { return true }
+        return false
+    }
 }
 
 /// One ordered playlist row.
