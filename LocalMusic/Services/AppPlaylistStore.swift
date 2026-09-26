@@ -4,9 +4,21 @@ import Foundation
 /// These are free to mix local files, Plex, and radio — no subscription.
 enum AppPlaylistStore {
 
+    #if DEBUG
+    /// Test-only override. When non-nil, playlists are written here instead
+    /// of `Documents/ChibiPlaylists/`. Set sequentially in `setUp` / `tearDown`;
+    /// not safe for parallel test plans.
+    nonisolated(unsafe) static var directoryOverride: URL?
+    #endif
+
     private static var directory: URL {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let dir = docs.appendingPathComponent("ChibiPlaylists", isDirectory: true)
+        let dir: URL = {
+            #if DEBUG
+            if let override = directoryOverride { return override }
+            #endif
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            return docs.appendingPathComponent("ChibiPlaylists", isDirectory: true)
+        }()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
