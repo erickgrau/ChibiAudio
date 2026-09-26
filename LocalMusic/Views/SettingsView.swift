@@ -4,12 +4,19 @@ struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AudioPlayerManager.self) private var player
     @Environment(PlusStore.self) private var plus
+    @Environment(AppearanceStore.self) private var appearance
+    @Bindable private var plex = PlexClient.shared
 
     private static let forkURL = URL(string: "https://github.com/erickgrau/ChibiAudio")!
     private static let upstreamURL = URL(string: "https://github.com/j23n/localmusic")!
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
+    }
+
+    private var plexServerLabel: String {
+        plex.discoveredServers.first(where: { $0.machineIdentifier == plex.machineIdentifier })?.name
+            ?? (plex.serverURLString.isEmpty ? "Not selected" : "Library")
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -19,8 +26,8 @@ struct SettingsView: View {
     @State private var showPaywall = false
     @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
     @AppStorage(DACSession.dacModeDefaultsKey) private var dacModeEnabled = false
-    @State private var plexServer = PlexClient.shared.serverURLString
-    @State private var plexToken = PlexClient.shared.token
+    @State private var showPlexSignIn = false
+    @State private var confirmPlexSignOut = false
     @State private var bandcampServer = BandcampSubsonicClient.shared.serverURLString
     @State private var bandcampUser = BandcampSubsonicClient.shared.username
     @State private var bandcampPassword = BandcampSubsonicClient.shared.password
@@ -127,25 +134,43 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    TextField("Server URL (http://…:32400)", text: $plexServer)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.URL)
-                    SecureField("X-Plex-Token", text: $plexToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Button("Save Plex Settings") {
-                        let client = PlexClient.shared
-                        client.serverURLString = plexServer.trimmingCharacters(in: .whitespacesAndNewlines)
-                        client.token = plexToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                    Picker("Appearance", selection: Binding(
+                        get: { appearance.preference },
+                        set: { appearance.preference = $0 }
+                    )) {
+                        ForEach(AppearancePreference.allCases) { pref in
+                            Text(pref.label).tag(pref)
+                        }
                     }
-                    NavigationLink("Browse Plex Music") {
-                        PlexBrowserView()
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Appearance")
+                } footer: {
+                    Text("Light is the default. Dark is Onyx. System follows the device.")
+                }
+
+                Section {
+                    if plex.isSignedIn {
+                        LabeledContent("Signed in as", value: plex.username.isEmpty ? "Plex" : plex.username)
+                        LabeledContent("Server", value: plexServerLabel)
+                        NavigationLink("Browse Plex Music") {
+                            PlexBrowserView()
+                        }
+                        Button("Sign out", role: .destructive) {
+                            confirmPlexSignOut = true
+                        }
+                    } else {
+                        Button("Continue with Plex") {
+                            showPlexSignIn = true
+                        }
+                        NavigationLink("Browse Plex Music") {
+                            PlexBrowserView()
+                        }
                     }
                 } header: {
                     Text("Plex")
                 } footer: {
-                    Text("Personal PMS only. Create a token at plex.tv/claim or from account XML. LAN direct play of your library works without Plex Pass; some remote features may need Pass.")
+                    Text("Sign in with Plex. We never see your password. Personal music libraries only.")
                 }
 
                 Section {
@@ -329,11 +354,18 @@ struct SettingsView: View {
                 if phase == .active { crashService.refreshPendingCrash() }
             }
             .onAppear {
-                plexServer = PlexClient.shared.serverURLString
-                plexToken = PlexClient.shared.token
                 bandcampServer = BandcampSubsonicClient.shared.serverURLString
                 bandcampUser = BandcampSubsonicClient.shared.username
                 bandcampPassword = BandcampSubsonicClient.shared.password
+            }
+            .sheet(isPresented: $showPlexSignIn) {
+                PlexSignInView()
+            }
+            .confirmationDialog("Disconnect Plex from ChibiAudio? This device forgets the sign-in.", isPresented: $confirmPlexSignOut, titleVisibility: .visible) {
+                Button("Sign out", role: .destructive) {
+                    plex.signOut()
+                }
+                Button("Cancel", role: .cancel) {}
             }
         }
     }

@@ -1,34 +1,83 @@
 import SwiftUI
 
-/// Design tokens: **Onyx Dark** canvas + **Soft Glass** materials.
-/// Accents are indicators only (amber = hi-res/PCM, teal = USB/DAC) — not a rainbow UI.
+/// Semantic tokens. Light (cream) is default. Dark is Onyx.
+/// Accents: amber = PCM/CTA, teal = connected/USB.
 enum ChibiTheme {
 
-    // MARK: - Canvas
+    static var canvasDeep: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(red: 0.039, green: 0.039, blue: 0.047, alpha: 1)
+                : UIColor(red: 0.957, green: 0.945, blue: 0.918, alpha: 1) // #F4F1EA
+        })
+    }
 
-    /// Near-black, not crushed OLED pure black.
-    static let canvasDeep = Color(red: 0.039, green: 0.039, blue: 0.047)      // #0A0A0C
-    static let canvasElevated = Color(red: 0.071, green: 0.071, blue: 0.078)  // #121214
-    static let canvasMid = Color(red: 0.090, green: 0.090, blue: 0.098)       // #171719
+    static var canvasElevated: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(red: 0.071, green: 0.071, blue: 0.078, alpha: 1)
+                : UIColor(red: 1.0, green: 0.988, blue: 0.969, alpha: 1) // #FFFcf7
+        })
+    }
 
-    // MARK: - Accents (small indicators)
+    static var canvasMid: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(red: 0.090, green: 0.090, blue: 0.098, alpha: 1)
+                : UIColor(red: 0.910, green: 0.886, blue: 0.839, alpha: 1) // #E8E2D6
+        })
+    }
 
-    /// Hi-res / PCM “LED” vibe.
-    static let amber = Color(red: 0.961, green: 0.651, blue: 0.137)            // #F5A623
-    /// USB / DAC connected.
-    static let teal = Color(red: 0.180, green: 0.769, blue: 0.714)             // #2EC4B6
+    static var amber: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(red: 0.961, green: 0.651, blue: 0.137, alpha: 1)
+                : UIColor(red: 0.769, green: 0.478, blue: 0.071, alpha: 1) // #C47A12
+        })
+    }
 
-    static let textPrimary = Color.white.opacity(0.94)
-    static let textSecondary = Color.white.opacity(0.55)
-    static let textTertiary = Color.white.opacity(0.38)
-    static let hairline = Color.white.opacity(0.10)
+    static var teal: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(red: 0.180, green: 0.769, blue: 0.714, alpha: 1)
+                : UIColor(red: 0.102, green: 0.561, blue: 0.525, alpha: 1) // #1A8F86
+        })
+    }
 
-    // MARK: - Materials
+    static var textPrimary: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(white: 1, alpha: 0.94)
+                : UIColor(red: 0.102, green: 0.094, blue: 0.078, alpha: 1)
+        })
+    }
+
+    static var textSecondary: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(white: 1, alpha: 0.55)
+                : UIColor(red: 0.361, green: 0.337, blue: 0.298, alpha: 1)
+        })
+    }
+
+    static var textTertiary: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(white: 1, alpha: 0.38)
+                : UIColor(red: 0.361, green: 0.337, blue: 0.298, alpha: 0.7)
+        })
+    }
+
+    static var hairline: Color {
+        Color(UIColor { t in
+            t.userInterfaceStyle == .dark
+                ? UIColor(white: 1, alpha: 0.10)
+                : UIColor(white: 0, alpha: 0.08)
+        })
+    }
 
     static var softGlass: Material { .ultraThinMaterial }
     static var softGlassThick: Material { .thinMaterial }
-
-    // MARK: - Typography
 
     static func sampleRateFont() -> Font {
         .system(.caption, design: .monospaced).weight(.medium)
@@ -46,8 +95,6 @@ enum ChibiTheme {
         .system(.title2, design: .default).weight(.bold)
     }
 }
-
-// MARK: - Source identity (display only)
 
 enum MediaSourceKind: String, Sendable {
     case onDevice
@@ -70,7 +117,6 @@ enum MediaSourceKind: String, Sendable {
         }
     }
 
-    /// Infer a chip from a playable URL / playlist entry (theming hook only).
     static func infer(from url: URL) -> MediaSourceKind {
         if !url.isFileURL {
             let host = url.host?.lowercased() ?? ""
@@ -107,14 +153,9 @@ enum MediaSourceKind: String, Sendable {
     }
 }
 
-// MARK: - View helpers
-
 extension View {
-    /// Root Onyx canvas + forced dark appearance (light optional later).
     func chibiCanvas() -> some View {
-        self
-            .preferredColorScheme(.dark)
-            .background(ChibiTheme.canvasDeep.ignoresSafeArea())
+        self.background(ChibiTheme.canvasDeep.ignoresSafeArea())
     }
 
     func chibiGlassCard(cornerRadius: CGFloat = 16) -> some View {

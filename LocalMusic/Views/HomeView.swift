@@ -9,6 +9,7 @@ struct HomeView: View {
 
     @State private var showSettings = false
     @State private var showFolderPicker = false
+    @State private var showPlexSignIn = false
     @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
     private let crashService = CrashDiagnosticsService.shared
 
@@ -38,7 +39,8 @@ struct HomeView: View {
                     LibraryShortcutsSection(
                         onFolders: { showFolderPicker = true },
                         onAllTracks: { tabs.selected = .library },
-                        onRadio: { tabs.selected = .radio }
+                        onRadio: { tabs.selected = .radio },
+                        onPlex: { showPlexSignIn = true }
                     )
                 }
                 .padding(.horizontal, 16)
@@ -69,6 +71,9 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $showPlexSignIn) {
+                PlexSignInView()
             }
             .sheet(isPresented: $showFolderPicker) {
                 DocumentPicker { pickerURL in
@@ -383,6 +388,7 @@ private struct LibraryShortcutsSection: View {
     let onFolders: () -> Void
     let onAllTracks: () -> Void
     let onRadio: () -> Void
+    var onPlex: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -406,6 +412,12 @@ private struct LibraryShortcutsSection: View {
                     subtitle: "Free Icecast / Shoutcast streams",
                     systemImage: "dot.radiowaves.left.and.right",
                     action: onRadio
+                )
+                shortcutRow(
+                    title: PlexClient.shared.isSignedIn ? "Plex library" : "Connect Plex",
+                    subtitle: PlexClient.shared.isSignedIn ? "Browse your Plex music" : "Sign in with Plex. We never see your password.",
+                    systemImage: "play.rectangle.fill",
+                    action: onPlex
                 )
             }
         }

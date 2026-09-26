@@ -498,7 +498,12 @@ final class AudioPlayerManager {
 
         activateAudioSession(trackSampleRate: trackSampleRate)
 
-        let item = AVPlayerItem(url: track.url)
+        let item: AVPlayerItem
+        if MediaSourceKind.infer(from: track.url) == .plex {
+            item = AVPlayerItem(asset: PlexClient.shared.authorizedAsset(url: track.url))
+        } else {
+            item = AVPlayerItem(url: track.url)
+        }
 
         if player == nil {
             player = AVPlayer(playerItem: item)

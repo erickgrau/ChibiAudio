@@ -7,6 +7,7 @@ struct LocalMusicApp: App {
     @State private var recents = RecentsStore()
     @State private var tabs = TabRouter()
     @State private var plus = PlusStore()
+    @State private var appearance = AppearanceStore()
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -66,6 +67,8 @@ struct LocalMusicApp: App {
             .environment(recents)
             .environment(tabs)
             .environment(plus)
+            .environment(appearance)
+            .preferredColorScheme(appearance.preferredColorScheme)
             .onChange(of: library.tracks) { _, _ in
                 player.refreshTrackMetadata { library.track(forURL: $0) }
             }
