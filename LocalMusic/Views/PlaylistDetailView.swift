@@ -5,12 +5,12 @@ import SwiftUI
 private enum PlaylistItem: Identifiable {
     /// `queueIndex` is this item's offset among resolved tracks (missing
     /// rows skipped) — the play-queue `startIndex`, not `firstIndex` by id.
-    case resolved(index: Int, track: Track, queueIndex: Int)
+    case resolved(index: Int, track: Track, queueIndex: Int, isLocalFile: Bool)
     case missing(index: Int, rawPath: String)
 
     var id: String {
         switch self {
-        case .resolved(let index, _, _): return "r-\(index)"
+        case .resolved(let index, _, _, _): return "r-\(index)"
         case .missing(let index, _):  return "m-\(index)"
         }
     }
@@ -109,11 +109,12 @@ struct PlaylistDetailView: View {
             Section {
                 ForEach(items) { item in
                     switch item {
-                    case .resolved(_, let track, let queueIndex):
+                    case .resolved(_, let track, let queueIndex, let isLocalFile):
                         PlaylistTrackRowButton(
                             track: track,
                             resolvedQueue: resolved,
-                            startIndex: queueIndex
+                            startIndex: queueIndex,
+                            isLocalFile: isLocalFile
                         )
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
@@ -180,7 +181,7 @@ struct PlaylistDetailView: View {
                    let libraryTrack = library.track(forURL: track.url) {
                     track = libraryTrack
                 }
-                items.append(.resolved(index: index, track: track, queueIndex: resolved.count))
+                items.append(.resolved(index: index, track: track, queueIndex: resolved.count, isLocalFile: entry.source.isLocalFile))
                 resolved.append(track)
             case .failure(let gate):
                 let label: String
@@ -241,6 +242,7 @@ private struct PlaylistTrackRowButton: View {
     let track: Track
     let resolvedQueue: [Track]
     let startIndex: Int
+    let isLocalFile: Bool
     @Environment(AudioPlayerManager.self) private var player
     @Environment(LibraryStore.self) private var library
     @State private var showRename = false
@@ -256,16 +258,18 @@ private struct PlaylistTrackRowButton: View {
                          && player.currentTrack?.id == track.id)
         }
         .contextMenu {
-            Button {
-                renameText = track.title
-                showRename = true
-            } label: {
-                Label("Rename", systemImage: "pencil")
-            }
-            Button {
-                ShareSheet.present(items: [track.url])
-            } label: {
-                Label("Share", systemImage: "square.and.arrow.up")
+            if isLocalFile {
+                Button {
+                    renameText = track.title
+                    showRename = true
+                } label: {
+                    Label("Rename", systemImage: "pencil")
+                }
+                Button {
+                    ShareSheet.present(items: [track.url])
+                } label: {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
             }
         }
         .alert("Rename Track", isPresented: $showRename) {
