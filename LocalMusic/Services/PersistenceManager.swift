@@ -75,6 +75,30 @@ final class PersistenceManager: @unchecked Sendable {
         defaults.object(forKey: "lastSynced") as? Date
     }
 
+    // MARK: - Title Overrides
+
+    private static let titleOverridesKey = "trackTitleOverrides"
+
+    /// User-renamed track titles, keyed by `Track.id`. Layered onto scanned
+    /// metadata in `LibraryStore.ingest` so a rename survives rescans instead
+    /// of being overwritten by the file's embedded tag.
+    func loadTitleOverrides() -> [UUID: String] {
+        guard let raw = defaults.dictionary(forKey: Self.titleOverridesKey) as? [String: String] else {
+            return [:]
+        }
+        var result: [UUID: String] = [:]
+        for (key, value) in raw {
+            if let id = UUID(uuidString: key) { result[id] = value }
+        }
+        return result
+    }
+
+    func saveTitleOverride(_ title: String, for id: UUID) {
+        var raw = defaults.dictionary(forKey: Self.titleOverridesKey) as? [String: String] ?? [:]
+        raw[id.uuidString] = title
+        defaults.set(raw, forKey: Self.titleOverridesKey)
+    }
+
     // MARK: - Library
 
     /// Synchronous load. Prefer `loadLibraryAsync()` from view code.

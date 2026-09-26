@@ -242,6 +242,9 @@ private struct PlaylistTrackRowButton: View {
     let resolvedQueue: [Track]
     let startIndex: Int
     @Environment(AudioPlayerManager.self) private var player
+    @Environment(LibraryStore.self) private var library
+    @State private var showRename = false
+    @State private var renameText = ""
 
     var body: some View {
         Button {
@@ -251,6 +254,24 @@ private struct PlaylistTrackRowButton: View {
                      isCurrent: player.currentTrack?.id == track.id,
                      isActivelyPlaying: player.isPlaying
                          && player.currentTrack?.id == track.id)
+        }
+        .contextMenu {
+            Button {
+                renameText = track.title
+                showRename = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button {
+                ShareSheet.present(items: [track.url])
+            } label: {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+        }
+        .alert("Rename Track", isPresented: $showRename) {
+            TextField("Title", text: $renameText)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") { library.renameTrack(track, to: renameText) }
         }
     }
 }
