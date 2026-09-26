@@ -60,6 +60,31 @@ struct ReleaseChange: Identifiable, Sendable {
 /// Release changelog, newest first.
 let APP_RELEASES: [AppRelease] = [
     AppRelease(
+        build: 93,
+        version: "1.2.0",
+        date: "September 26, 2026",
+        headline: "Live Radio Visualizers, Detailed Cassette, and Landscape Now Playing",
+        why: "Internet radio streams froze every metering visualizer the moment they played. Live streams deserve the same reactive visuals and a full-screen landscape stage that local tracks get.",
+        changes: [
+            ReleaseChange(
+                icon: "waveform",
+                text: "VU meters, LED bar, EQ spectrum, and all metering visualizers now react to live internet radio streams, not just local files."
+            ),
+            ReleaseChange(
+                icon: "cassette.fill",
+                text: "Redrawn cassette visualizer: smoked shell with screws, clear tape window, moving tape packs, and toothed hubs."
+            ),
+            ReleaseChange(
+                icon: "rectangle.landscape.rotate",
+                text: "Now Playing goes full-screen in landscape with the visualizer edge to edge and a compact control column."
+            ),
+            ReleaseChange(
+                icon: "dot.radiowaves.left.and.right",
+                text: "Live radio streams show a LIVE indicator in place of a seek bar that had nothing to scrub."
+            )
+        ]
+    ),
+    AppRelease(
         build: 91,
         version: "1.1.0",
         date: "September 25, 2026",

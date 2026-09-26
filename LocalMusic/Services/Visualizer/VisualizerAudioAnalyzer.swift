@@ -36,6 +36,10 @@ final class VisualizerAudioAnalyzer {
     @ObservationIgnored private var meteringDesired = false
     @ObservationIgnored private var trackedURL: URL?
     @ObservationIgnored private var mainIsPlaying = false
+    /// Live-source mode Soft PASS: instead of a second network connection,
+    /// we attach a passthrough tap to the main player's own item.
+    @ObservationIgnored private var liveTapItem: AVPlayerItem?
+    @ObservationIgnored private var liveTap: MTAudioProcessingTap?
 
     /// Nonisolated ring buffer: audio tap writes, MainActor publish loop reads.
     /// Keeps pending meters + `NSLock` off `@MainActor` / async contexts.
@@ -54,6 +58,7 @@ final class VisualizerAudioAnalyzer {
             }
         } else {
             tearDownAnalysisPlayer()
+            removeLiveTap()
             decayToIdle()
         }
     }
@@ -75,15 +80,41 @@ final class VisualizerAudioAnalyzer {
             return
         }
 
+        // Live sources (radio / remote streams) can't be seek-synced on a
+        // second connection: attach a passthrough tap to the main item instead.
+        if Self.isLiveSource(trackURL) {
+            tearDownAnalysisPlayer()
+            guard let item = liveItemProvider?() else {
+                removeLiveTap()
+                decayToIdle()
+                return
+            }
+            installLiveTap(on: item)
+            return
+        }
+
+        removeLiveTap()
         if urlChanged {
             ensureAnalysisPlayer(url: trackURL)
         }
         syncPlaybackState(seekHint: currentTime)
     }
 
+    /// Non-file URLs (radio / remote streams) need the passthrough tap path:
+    /// a live stream cannot be seek-synced onto a parallel analysis player.
+    nonisolated static func isLiveSource(_ url: URL) -> Bool {
+        !url.isFileURL
+    }
+
+    /// Provides the main player's current item for live-source metering.
+    /// Set by `AudioPlayerManager` at init; a parallel muted AVPlayer is not
+    /// opened for network streams (a live URL cannot be seek-synced).
+    @ObservationIgnored var liveItemProvider: (() -> AVPlayerItem?)?
+
     func teardown() {
         meteringDesired = false
         tearDownAnalysisPlayer()
+        removeLiveTap()
         publishTask?.cancel()
         publishTask = nil
         syncTask?.cancel()
@@ -107,7 +138,7 @@ final class VisualizerAudioAnalyzer {
         isMetering = true
 
         Task { [weak self] in
-            await self?.installTap(on: item)
+            await self?.installTap(on: item, forLiveSource: false)
         }
     }
 
@@ -164,7 +195,7 @@ final class VisualizerAudioAnalyzer {
         }
     }
 
-    private func installTap(on item: AVPlayerItem) async {
+    private func installTap(on item: AVPlayerItem, forLiveSource: Bool) async {
         let asset = item.asset
         let tracks: [AVAssetTrack]
         do {
@@ -174,7 +205,7 @@ final class VisualizerAudioAnalyzer {
             return
         }
         guard let audioTrack = tracks.first else { return }
-        guard analysisItem === item else { return }
+        guard itemStillTracked(item, live: forLiveSource) else { return }
 
         // Capture the nonisolated buffer — not `self` — so the @Sendable
         // tap handler never touches MainActor-isolated state.
@@ -233,10 +264,42 @@ final class VisualizerAudioAnalyzer {
         mix.inputParameters = [params]
 
         await MainActor.run {
-            guard self.analysisItem === item else { return }
-            self.audioTap = tap
+            guard self.itemStillTracked(item, live: forLiveSource) else { return }
+            if forLiveSource {
+                self.liveTapItem = item
+                self.liveTap = tap
+            } else {
+                self.audioTap = tap
+            }
             item.audioMix = mix
         }
+    }
+
+    /// Whether `item` is still the one we should be tapping after the async
+    /// tap setup (tracks can load while the player moves on to another item).
+    private func itemStillTracked(_ item: AVPlayerItem, live: Bool) -> Bool {
+        live ? liveTapItem === item : analysisItem === item
+    }
+
+    /// Attach a passthrough metering tap to the main player's current item
+    /// for live sources (radio / remote streams). The tap only reads frames —
+    /// audio reaching the output is bit-identical to the un-tapped path, and
+    /// no second network connection is opened.
+    private func installLiveTap(on item: AVPlayerItem) {
+        guard liveTapItem !== item else { return } // already tapping this item
+        removeLiveTap()
+        liveTapItem = item
+        Task { [weak self] in
+            await self?.installTap(on: item, forLiveSource: true)
+        }
+    }
+
+    private func removeLiveTap() {
+        if let item = liveTapItem {
+            item.audioMix = nil
+        }
+        liveTap = nil
+        liveTapItem = nil
     }
 
     private func startPublishing() {
