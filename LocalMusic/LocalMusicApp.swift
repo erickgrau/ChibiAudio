@@ -7,7 +7,6 @@ struct LocalMusicApp: App {
     @State private var recents = RecentsStore()
     @State private var tabs = TabRouter()
     @State private var plus = PlusStore()
-    @State private var appearance = AppearanceStore()
     @State private var showWhatsNew = false
 
     @Environment(\.scenePhase) private var scenePhase
@@ -68,8 +67,6 @@ struct LocalMusicApp: App {
             .environment(recents)
             .environment(tabs)
             .environment(plus)
-            .environment(appearance)
-            .preferredColorScheme(appearance.preferredColorScheme)
             .sheet(isPresented: $showWhatsNew, onDismiss: { WhatsNew.markSeen() }) {
                 WhatsNewView(releases: Array(WhatsNew.unseen.prefix(1))) {
                     showWhatsNew = false

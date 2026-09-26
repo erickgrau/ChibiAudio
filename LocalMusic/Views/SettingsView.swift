@@ -4,7 +4,6 @@ struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AudioPlayerManager.self) private var player
     @Environment(PlusStore.self) private var plus
-    @Environment(AppearanceStore.self) private var appearance
     @Bindable private var plex = PlexClient.shared
 
     private static let forkURL = URL(string: "https://github.com/erickgrau/ChibiAudio")!
@@ -132,22 +131,6 @@ struct SettingsView: View {
                 }
                 .onChange(of: dacModeEnabled) { _, _ in
                     player.reloadAudioSessionPreference()
-                }
-
-                Section {
-                    Picker("Appearance", selection: Binding(
-                        get: { appearance.preference },
-                        set: { appearance.preference = $0 }
-                    )) {
-                        ForEach(AppearancePreference.allCases) { pref in
-                            Text(pref.label).tag(pref)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("Appearance")
-                } footer: {
-                    Text("Light is the default. Dark is Onyx. System follows the device.")
                 }
 
                 Section {
