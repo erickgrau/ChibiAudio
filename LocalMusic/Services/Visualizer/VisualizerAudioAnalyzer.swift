@@ -49,6 +49,15 @@ final class VisualizerAudioAnalyzer {
 
     /// Enable or disable metering Soft PASS (spectrum modes only).
     func setMeteringEnabled(_ enabled: Bool) {
+        // Switching between two metering modes (e.g. VU Meters → LED Bar) calls
+        // this again with enabled == true while already metering the same
+        // track. Re-entering used to tear down and rebuild the analysis
+        // player/tap on every mode change, racing the tap's still-live audio
+        // render thread against `tapBridge`'s deallocation — a crash. No-op
+        // when we're already metering this track.
+        if enabled, meteringDesired, analysisPlayer != nil || liveTapItem != nil {
+            return
+        }
         meteringDesired = enabled
         if enabled {
             startPublishing()
@@ -217,11 +226,17 @@ final class VisualizerAudioAnalyzer {
 
         var callbacks = MTAudioProcessingTapCallbacks(
             version: kMTAudioProcessingTapCallbacksVersion_0,
-            clientInfo: Unmanaged.passUnretained(bridge).toOpaque(),
+            // Retained, not unretained: the tap's own lifecycle (finalize,
+            // called by AVFoundation once the render thread is truly done
+            // with it) owns this reference, decoupled from however soon our
+            // Swift-side `tapBridge` teardown runs.
+            clientInfo: Unmanaged.passRetained(bridge).toOpaque(),
             init: { _, clientInfo, tapStorageOut in
                 tapStorageOut.pointee = clientInfo
             },
-            finalize: { _ in },
+            finalize: { tap in
+                Unmanaged<TapBridge>.fromOpaque(MTAudioProcessingTapGetStorage(tap)).release()
+            },
             prepare: { _, _, _ in },
             unprepare: { _ in },
             process: { tap, numberFrames, _, bufferListInOut, numberFramesOut, flagsOut in

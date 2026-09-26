@@ -326,9 +326,37 @@ final class LibraryStore {
         return playlist
     }
 
+    // MARK: - Rename
+
+    /// Renames a track's display title. Persists as an override (keyed by
+    /// the URL-derived stable `id`) that survives rescans, since the
+    /// underlying file's embedded tag is never touched.
+    func renameTrack(_ track: Track, to newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != track.title,
+              let idx = tracks.firstIndex(where: { $0.id == track.id }) else { return }
+        tracks[idx].title = trimmed
+        tracksByURL[tracks[idx].url.standardized] = tracks[idx]
+        if idx < searchKeys.count {
+            searchKeys[idx] = (tracks[idx].title + " " + tracks[idx].artist + " " + tracks[idx].album).lowercased()
+        }
+        PersistenceManager.shared.saveTitleOverride(trimmed, for: track.id)
+        scheduleApply(immediate: true)
+        let snapshot = tracks
+        Task { await PersistenceManager.shared.saveLibraryAsync(snapshot) }
+    }
+
     // MARK: - Indexing
 
     private func ingest(tracks: [Track], persist: Bool) async {
+        var tracks = tracks
+        let overrides = PersistenceManager.shared.loadTitleOverrides()
+        if !overrides.isEmpty {
+            for i in tracks.indices {
+                if let title = overrides[tracks[i].id] { tracks[i].title = title }
+            }
+        }
+
         var byURL: [URL: Track] = [:]
         var keys: [String] = []
         byURL.reserveCapacity(tracks.count)

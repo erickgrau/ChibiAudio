@@ -1,80 +1,18 @@
 import SwiftUI
 
-/// Semantic tokens. Light (cream) is default. Dark is Onyx.
+/// Onyx Dark + Soft Glass. Locked dark — no light/system variant.
 /// Accents: amber = PCM/CTA, teal = connected/USB.
 enum ChibiTheme {
 
-    static var canvasDeep: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(red: 0.039, green: 0.039, blue: 0.047, alpha: 1)
-                : UIColor(red: 0.957, green: 0.945, blue: 0.918, alpha: 1) // #F4F1EA
-        })
-    }
-
-    static var canvasElevated: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(red: 0.071, green: 0.071, blue: 0.078, alpha: 1)
-                : UIColor(red: 1.0, green: 0.988, blue: 0.969, alpha: 1) // #FFFcf7
-        })
-    }
-
-    static var canvasMid: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(red: 0.090, green: 0.090, blue: 0.098, alpha: 1)
-                : UIColor(red: 0.910, green: 0.886, blue: 0.839, alpha: 1) // #E8E2D6
-        })
-    }
-
-    static var amber: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(red: 0.961, green: 0.651, blue: 0.137, alpha: 1)
-                : UIColor(red: 0.769, green: 0.478, blue: 0.071, alpha: 1) // #C47A12
-        })
-    }
-
-    static var teal: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(red: 0.180, green: 0.769, blue: 0.714, alpha: 1)
-                : UIColor(red: 0.102, green: 0.561, blue: 0.525, alpha: 1) // #1A8F86
-        })
-    }
-
-    static var textPrimary: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(white: 1, alpha: 0.94)
-                : UIColor(red: 0.102, green: 0.094, blue: 0.078, alpha: 1)
-        })
-    }
-
-    static var textSecondary: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(white: 1, alpha: 0.55)
-                : UIColor(red: 0.361, green: 0.337, blue: 0.298, alpha: 1)
-        })
-    }
-
-    static var textTertiary: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(white: 1, alpha: 0.38)
-                : UIColor(red: 0.361, green: 0.337, blue: 0.298, alpha: 0.7)
-        })
-    }
-
-    static var hairline: Color {
-        Color(UIColor { t in
-            t.userInterfaceStyle == .dark
-                ? UIColor(white: 1, alpha: 0.10)
-                : UIColor(white: 0, alpha: 0.08)
-        })
-    }
+    static let canvasDeep = Color(red: 0.039, green: 0.039, blue: 0.047)
+    static let canvasElevated = Color(red: 0.071, green: 0.071, blue: 0.078)
+    static let canvasMid = Color(red: 0.090, green: 0.090, blue: 0.098)
+    static let amber = Color(red: 0.961, green: 0.651, blue: 0.137)
+    static let teal = Color(red: 0.180, green: 0.769, blue: 0.714)
+    static let textPrimary = Color(white: 1).opacity(0.94)
+    static let textSecondary = Color(white: 1).opacity(0.55)
+    static let textTertiary = Color(white: 1).opacity(0.38)
+    static let hairline = Color(white: 1).opacity(0.10)
 
     static var softGlass: Material { .ultraThinMaterial }
     static var softGlassThick: Material { .thinMaterial }
@@ -155,7 +93,9 @@ enum MediaSourceKind: String, Sendable {
 
 extension View {
     func chibiCanvas() -> some View {
-        self.background(ChibiTheme.canvasDeep.ignoresSafeArea())
+        self
+            .background(ChibiTheme.canvasDeep.ignoresSafeArea())
+            .preferredColorScheme(.dark)
     }
 
     func chibiGlassCard(cornerRadius: CGFloat = 16) -> some View {

@@ -247,6 +247,8 @@ private struct TrackRowButton: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AudioPlayerManager.self) private var player
     @State private var showAddToPlaylist = false
+    @State private var showRename = false
+    @State private var renameText = ""
 
     var body: some View {
         Button {
@@ -265,9 +267,25 @@ private struct TrackRowButton: View {
             } label: {
                 Label("Add to Playlist", systemImage: "text.badge.plus")
             }
+            Button {
+                renameText = track.title
+                showRename = true
+            } label: {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button {
+                ShareSheet.present(items: [track.url])
+            } label: {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
         }
         .sheet(isPresented: $showAddToPlaylist) {
             AddToPlaylistSheet(payload: .local(track))
+        }
+        .alert("Rename Track", isPresented: $showRename) {
+            TextField("Title", text: $renameText)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") { library.renameTrack(track, to: renameText) }
         }
     }
 }
