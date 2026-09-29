@@ -179,6 +179,17 @@ final class PlexAuthPresenter: NSObject, ASWebAuthenticationPresentationContextP
         self.session = session
     }
 
+    /// Plex's auth page does not reliably navigate to the forwardUrl once the
+    /// code is confirmed, so the sheet can't count on its own completion
+    /// handler to close it. Call this the moment sign-in is known to be done
+    /// (token saved, or the user cancelled) so the sheet always closes.
+    func dismissActiveSession() {
+        session?.cancel()
+        session = nil
+    }
+
+    var hasActiveSession: Bool { session != nil }
+
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
