@@ -45,7 +45,12 @@ final class VisualizerAudioAnalyzer {
     /// Keeps pending meters + `NSLock` off `@MainActor` / async contexts.
     @ObservationIgnored private let pendingMeters = PendingMeterBuffer()
 
-    private init() {}
+    @ObservationIgnored private var interruptionTask: Task<Void, Never>?
+    @ObservationIgnored private var routeChangeTask: Task<Void, Never>?
+
+    private init() {
+        observeAudioSessionEvents()
+    }
 
     /// Enable or disable metering Soft PASS (spectrum modes only).
     func setMeteringEnabled(_ enabled: Bool) {
@@ -128,7 +133,67 @@ final class VisualizerAudioAnalyzer {
         publishTask = nil
         syncTask?.cancel()
         syncTask = nil
+        interruptionTask?.cancel()
+        interruptionTask = nil
+        routeChangeTask?.cancel()
+        routeChangeTask = nil
         decayToIdle()
+    }
+
+    // MARK: - Audio session interruption / route-change recovery
+
+    /// `MTAudioProcessingTap` render graphs are known to go silently dead
+    /// across a real `AVAudioSession` interruption (call, Siri, another
+    /// app's alert sound) even after `AudioPlayerManager` reactivates the
+    /// session and resumes the main player — calling `.play()` again on the
+    /// same tapped player doesn't reliably restart tap callbacks. Rebuild
+    /// the tap from scratch instead of trusting it to self-heal.
+    private func observeAudioSessionEvents() {
+        interruptionTask = Task { [weak self] in
+            let events = NotificationCenter.default.notifications(
+                named: AVAudioSession.interruptionNotification,
+                object: AVAudioSession.sharedInstance()
+            ).compactMap { notification -> UInt? in
+                guard let userInfo = notification.userInfo,
+                      let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt
+                else { return nil }
+                return typeValue
+            }
+            for await typeValue in events {
+                self?.handleInterruption(typeValue: typeValue)
+            }
+        }
+
+        routeChangeTask = Task { [weak self] in
+            let events = NotificationCenter.default.notifications(
+                named: AVAudioSession.routeChangeNotification
+            )
+            for await _ in events {
+                self?.restartMetering()
+            }
+        }
+    }
+
+    private func handleInterruption(typeValue: UInt) {
+        guard let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+        if type == .ended {
+            restartMetering()
+        }
+    }
+
+    /// Tears down and re-creates whichever tap path (parallel analysis
+    /// player, or live passthrough) is active, so a fresh render graph is
+    /// attached after the audio session comes back from an interruption.
+    private func restartMetering() {
+        guard meteringDesired, let trackURL = trackedURL else { return }
+        if Self.isLiveSource(trackURL) {
+            guard let item = liveItemProvider?() else { return }
+            removeLiveTap()
+            installLiveTap(on: item)
+        } else {
+            ensureAnalysisPlayer(url: trackURL)
+            syncPlaybackState()
+        }
     }
 
     // MARK: - Parallel player Soft PASS

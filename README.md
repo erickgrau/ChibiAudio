@@ -1,6 +1,11 @@
 # ChibiAudio
 
-**Offline HiFi Player** — free + optional Plus personal iOS music player. Fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
+[![Platform](https://img.shields.io/badge/platform-iOS%2018%2B-lightgrey)](#build)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
+[![Build](https://github.com/erickgrau/ChibiAudio/actions/workflows/build.yml/badge.svg)](https://github.com/erickgrau/ChibiAudio/actions/workflows/build.yml)
+[![Tests](https://github.com/erickgrau/ChibiAudio/actions/workflows/test.yml/badge.svg)](https://github.com/erickgrau/ChibiAudio/actions/workflows/test.yml)
+
+Bit-perfect offline playback for the music you already own: local files, iCloud, Google Drive, Plex, and Bandcamp, in one app, with a real THX Onyx DAC path underneath. Fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
 
 | | |
 |---|---|
@@ -11,6 +16,12 @@
 LocalMusic architecture stays under `LocalMusic/` (folder picker, security-scoped bookmarks, library scan, AVPlayer queue, lyrics, lock screen / Now Playing). ChibiAudio layers branding, free-tier sources, and optional **ChibiAudio Plus** ($1.99/mo).
 
 See [NOTICE](NOTICE) for upstream attribution.
+
+## Screenshots
+
+| Home | Library | Radio | Now Playing |
+|---|---|---|---|
+| ![Home](docs/screenshots/home.png) | ![Library](docs/screenshots/library.png) | ![Radio](docs/screenshots/radio.png) | ![Now Playing](docs/screenshots/now-playing.png) |
 
 ## What you get
 

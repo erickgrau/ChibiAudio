@@ -1,8 +1,36 @@
+import AuthenticationServices
 import Foundation
 import Testing
 @testable import LocalMusic
 
 struct PlexAuthTests {
+
+    /// Regression for the sheet that never closed: Plex's auth page doesn't
+    /// reliably navigate to the forwardUrl, so the sign-in completion path
+    /// must dismiss the sheet itself rather than rely on that callback.
+    @MainActor
+    @Test func dismissActiveSessionClearsRetainedSheet() {
+        let session = ASWebAuthenticationSession(
+            url: URL(string: "https://app.plex.tv/auth")!,
+            callbackURLScheme: "chibiaudio"
+        ) { _, _ in }
+        PlexAuthPresenter.shared.retain(session)
+        #expect(PlexAuthPresenter.shared.hasActiveSession)
+        PlexAuthPresenter.shared.dismissActiveSession()
+        #expect(!PlexAuthPresenter.shared.hasActiveSession)
+    }
+
+    @MainActor
+    @Test func applyTokenDismissesTheAuthSheet() async {
+        let session = ASWebAuthenticationSession(
+            url: URL(string: "https://app.plex.tv/auth")!,
+            callbackURLScheme: "chibiaudio"
+        ) { _, _ in }
+        PlexAuthPresenter.shared.retain(session)
+        await PlexClient.shared.applyToken("test-token-\(UUID().uuidString)")
+        #expect(!PlexAuthPresenter.shared.hasActiveSession)
+        PlexClient.shared.signOut()
+    }
 
     @Test func parsePinJSON() throws {
         let data = Data(#"{"id": 42, "code": "ABCD"}"#.utf8)

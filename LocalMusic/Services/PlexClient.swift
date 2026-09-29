@@ -137,6 +137,7 @@ final class PlexClient {
         pollTask = nil
         isSigningIn = false
         pinCode = nil
+        PlexAuthPresenter.shared.dismissActiveSession()
     }
 
     func signOut() {
@@ -156,6 +157,10 @@ final class PlexClient {
         UserDefaults.standard.removeObject(forKey: Self.legacyTokenKey)
         pinCode = nil
         isSigningIn = false
+        // The poll succeeding is the real signal sign-in is done — Plex's
+        // auth page doesn't reliably navigate to the forwardUrl, so the
+        // ASWebAuthenticationSession sheet can't be trusted to close itself.
+        PlexAuthPresenter.shared.dismissActiveSession()
         await refreshAccountAndServers()
     }
 
