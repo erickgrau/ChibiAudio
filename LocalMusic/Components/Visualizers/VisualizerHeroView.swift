@@ -79,14 +79,19 @@ struct VisualizerHeroView: View {
                 right: analyzer.rightLevel,
                 isPlaying: isPlaying
             )
+            .frame(width: size, height: size)
         case .ledBar:
             LEDBarVisualizer(spectrum: analyzer.spectrum, beat: analyzer.beatEnergy)
+                .frame(width: size, height: size)
         case .eqSpectrum:
             EQSpectrumVisualizer(spectrum: analyzer.spectrum, beat: analyzer.beatEnergy)
+                .frame(width: size, height: size)
         case .kaleidoscope:
             KaleidoscopeVisualizer(spectrum: analyzer.spectrum, beat: analyzer.beatEnergy)
+                .frame(width: size, height: size)
         case .vectors:
             VectorsVisualizer(waveform: analyzer.waveform, beat: analyzer.beatEnergy)
+                .frame(width: size, height: size)
         case .vinyl:
             VinylVisualizer(track: track, isPlaying: isPlaying, size: size)
         case .cassette:
