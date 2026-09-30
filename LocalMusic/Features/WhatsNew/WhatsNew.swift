@@ -60,6 +60,19 @@ struct ReleaseChange: Identifiable, Sendable {
 /// Release changelog, newest first.
 let APP_RELEASES: [AppRelease] = [
     AppRelease(
+        build: 108,
+        version: "1.2.1",
+        date: "September 29, 2026",
+        headline: "Plex Sign-In Now Shows the Code Screen",
+        why: "Plex sign-in was silently auto-authorizing against an existing Safari session, so the page flashed and vanished before you could see or confirm anything.",
+        changes: [
+            ReleaseChange(
+                icon: "checkmark.shield",
+                text: "Continue with Plex now opens plex.tv/link, where you enter the on-screen code yourself instead of the sheet silently signing in and disappearing."
+            )
+        ]
+    ),
+    AppRelease(
         build: 93,
         version: "1.2.0",
         date: "September 26, 2026",
