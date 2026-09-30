@@ -60,6 +60,19 @@ struct ReleaseChange: Identifiable, Sendable {
 /// Release changelog, newest first.
 let APP_RELEASES: [AppRelease] = [
     AppRelease(
+        build: 111,
+        version: "1.2.2",
+        date: "September 29, 2026",
+        headline: "Plex Sign-In Code Is Now 4 Characters",
+        why: "The PIN request was asking Plex for the long opaque code meant for silent app-to-app sign-in, so the on-screen code didn't match what plex.tv/link expected you to type.",
+        changes: [
+            ReleaseChange(
+                icon: "number",
+                text: "Plex sign-in now shows the correct 4-character code to enter at plex.tv/link."
+            )
+        ]
+    ),
+    AppRelease(
         build: 108,
         version: "1.2.1",
         date: "September 29, 2026",
