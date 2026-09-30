@@ -1,9 +1,12 @@
 import Foundation
 
-/// Official Plex PIN sign-in (legacy strong PIN). Never collects a password.
+/// Official Plex PIN sign-in. Never collects a password.
 enum PlexAuthService {
     static let productName = "ChibiAudio"
-    static let pinsURL = URL(string: "https://plex.tv/api/v2/pins?strong=true")!
+    /// No `strong` param: that variant returns a long opaque code meant for
+    /// the silent app.plex.tv/auth flow. The manual plex.tv/link page (see
+    /// linkPageURL) expects the plain 4-character code this call returns.
+    static let pinsURL = URL(string: "https://plex.tv/api/v2/pins")!
     /// Plex's manual device-linking page: shows a code-entry form instead of
     /// silently authorizing against a shared Safari session (see authPageURL).
     static let linkPageURL = URL(string: "https://www.plex.tv/link/")!
