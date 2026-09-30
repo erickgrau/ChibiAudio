@@ -144,14 +144,9 @@ struct PlexSignInView: View {
     @MainActor
     private func startSignIn() async {
         guard let pin = await client.requestPin() else { return }
-        guard let authURL = PlexAuthService.authPageURL(clientID: client.clientID, code: pin.code) else {
-            client.lastError = "Couldn’t open Plex."
-            client.isSigningIn = false
-            return
-        }
         client.startPolling(pin: pin)
         let session = ASWebAuthenticationSession(
-            url: authURL,
+            url: PlexAuthService.linkPageURL,
             callbackURLScheme: "chibiaudio"
         ) { _, error in
             if error != nil {

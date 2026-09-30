@@ -69,10 +69,10 @@ struct PlexAuthTests {
         #expect(resources[0].preferredURI == "http://10.0.0.2:32400")
     }
 
-    @Test func authPageHasCallback() {
-        let url = PlexAuthService.authPageURL(clientID: "cid", code: "ZZ")
-        #expect(url?.host == "app.plex.tv")
-        #expect(url?.fragment?.contains("code=ZZ") == true)
-        #expect(url?.fragment?.contains("chibiaudio://plex-auth") == true)
+    @Test func linkPageIsManualCodeEntry() {
+        // Regression: app.plex.tv/auth silently auto-authorizes against a
+        // shared Safari session instead of asking the user to type the code.
+        #expect(PlexAuthService.linkPageURL.host == "www.plex.tv")
+        #expect(PlexAuthService.linkPageURL.path == "/link")
     }
 }
