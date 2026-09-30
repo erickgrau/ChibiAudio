@@ -39,6 +39,13 @@ struct PlexAuthTests {
         #expect(pin.code == "ABCD")
     }
 
+    /// Regression for the "pinBeat" bug: `strong=true` returns a ~25-char code
+    /// meant for the silent app.plex.tv/auth flow, not the 4-char code the
+    /// manual plex.tv/link page (linkPageURL) expects.
+    @Test func pinsURLDoesNotRequestStrongCode() {
+        #expect(PlexAuthService.pinsURL.query(percentEncoded: false) == nil)
+    }
+
     @Test func parseAuthToken() {
         let data = Data(#"{"id": 1, "code": "X", "authToken": "tok_abc"}"#.utf8)
         #expect(PlexAuthService.parseAuthToken(data) == "tok_abc")
