@@ -3,8 +3,10 @@ import Foundation
 /// Official Plex PIN sign-in (legacy strong PIN). Never collects a password.
 enum PlexAuthService {
     static let productName = "ChibiAudio"
-    static let callbackURL = "chibiaudio://plex-auth"
     static let pinsURL = URL(string: "https://plex.tv/api/v2/pins?strong=true")!
+    /// Plex's manual device-linking page: shows a code-entry form instead of
+    /// silently authorizing against a shared Safari session (see authPageURL).
+    static let linkPageURL = URL(string: "https://www.plex.tv/link/")!
 
     struct Pin: Equatable, Sendable {
         var id: Int
@@ -39,20 +41,6 @@ enum PlexAuthService {
             headers["X-Plex-Token"] = token
         }
         return headers
-    }
-
-    static func authPageURL(clientID: String, code: String) -> URL? {
-        var parts = URLComponents()
-        parts.scheme = "https"
-        parts.host = "app.plex.tv"
-        parts.path = "/auth"
-        parts.fragment = [
-            "clientID=\(clientID)",
-            "code=\(code)",
-            "context[device][product]=\(productName)",
-            "forwardUrl=\(callbackURL)",
-        ].joined(separator: "&")
-        return parts.url
     }
 
     static func parsePin(_ data: Data) throws -> Pin {
