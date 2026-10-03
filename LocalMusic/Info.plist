@@ -24,6 +24,10 @@
 	</dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Locked 2026-09-20 (task 6f2450e5). GADBannerAdUnitID still pending —
+	     AdBannerView falls back to Google's test banner unit until set. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-2609225598979801~6627096409</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
