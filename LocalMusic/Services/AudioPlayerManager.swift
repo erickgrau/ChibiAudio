@@ -47,6 +47,10 @@ final class AudioPlayerManager {
     @ObservationIgnored nonisolated(unsafe) private var statusObserver: NSKeyValueObservation?
     @ObservationIgnored nonisolated(unsafe) private var interruptionTask: Task<Void, Never>?
     @ObservationIgnored nonisolated(unsafe) private var routeChangeTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) private var mediaServicesResetTask: Task<Void, Never>?
+    /// Native rate of the loaded file (nil for streams). Reused on every
+    /// session (re)activation so pause/resume doesn't fall back to the ceiling.
+    @ObservationIgnored private var currentTrackSampleRate: Double?
     @ObservationIgnored nonisolated(unsafe) private var activeSecurityScopedURL: URL?
 
     /// Remembered across an audio-session interruption so we can resume
@@ -94,6 +98,7 @@ final class AudioPlayerManager {
         }
         interruptionTask?.cancel()
         routeChangeTask?.cancel()
+        mediaServicesResetTask?.cancel()
         statusObserver?.invalidate()
         activeSecurityScopedURL?.stopAccessingSecurityScopedResource()
     }
@@ -104,7 +109,7 @@ final class AudioPlayerManager {
         let dacMode = UserDefaults.standard.bool(forKey: DACSession.dacModeDefaultsKey)
         let enable = DACSession.shouldEnableDACPath(userEnabled: dacMode)
         do {
-            try DACSession.configure(dacMode: enable, trackSampleRate: trackSampleRate)
+            try DACSession.configure(dacMode: enable, trackSampleRate: trackSampleRate ?? currentTrackSampleRate)
             let route = DACSession.currentRouteInfo()
             if enable {
                 Log.player.info(
@@ -171,6 +176,37 @@ final class AudioPlayerManager {
                 self?.handleRouteChange(reasonValue: reasonValue)
             }
         }
+
+        mediaServicesResetTask = Task { [weak self] in
+            let events = NotificationCenter.default.notifications(
+                named: AVAudioSession.mediaServicesWereResetNotification
+            ).map { _ in () }
+            for await _ in events {
+                self?.handleMediaServicesReset()
+            }
+        }
+    }
+
+    /// mediaserverd restarted: the old AVPlayer and session settings are dead.
+    /// Drop the player and reload the current track; if we were paused, the
+    /// next `play()` reloads it instead.
+    private func handleMediaServicesReset() {
+        Log.player.error("Media services were reset; rebuilding player")
+        let wasPlaying = isPlaying
+        removeTimeObserver()
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+            self.endObserver = nil
+        }
+        statusObserver?.invalidate()
+        statusObserver = nil
+        player = nil
+        isPlaying = false
+        configureAudioSession()
+        configureRemoteCommands()
+        if wasPlaying, let currentTrack {
+            loadAndPlay(currentTrack)
+        }
     }
 
     private func handleInterruption(typeValue: UInt, optionsValue: UInt) {
@@ -192,8 +228,15 @@ final class AudioPlayerManager {
 
     private func handleRouteChange(reasonValue: UInt) {
         guard let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
-        if reason == .oldDeviceUnavailable {
+        switch reason {
+        case .oldDeviceUnavailable:
             pause()
+        case .newDeviceAvailable, .override:
+            // e.g. THX Onyx plugged in mid-track: re-run DAC auto-enable at the
+            // current file's native rate instead of waiting for the next track.
+            reloadAudioSessionPreference()
+        default:
+            break
         }
     }
 
@@ -281,7 +324,12 @@ final class AudioPlayerManager {
 
     /// Resume playback. Idempotent: never pauses.
     func play() {
-        guard let player else { return }
+        guard let player, player.currentItem != nil else {
+            // Player torn down (media services reset) or item cleared by a
+            // failed load: reload the current track instead of playing silence.
+            if let currentTrack { loadAndPlay(currentTrack) }
+            return
+        }
         activateAudioSession()
         player.play()
         isPlaying = true
@@ -400,7 +448,8 @@ final class AudioPlayerManager {
         case .stop:
             isPlaying = false
             player?.pause()
-            updateNowPlayingElapsed()
+            // Rewind so a later play() is audible instead of "playing" at the end.
+            seek(to: 0)
         case .noop:
             break
         }
@@ -438,6 +487,11 @@ final class AudioPlayerManager {
     // MARK: - Private Helpers
 
     private func loadAndPlay(_ track: Track) {
+        // Silence the previous item now; otherwise it keeps playing under the
+        // new title while iCloud download / rate probing runs.
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        currentTrackSampleRate = nil
         removeTimeObserver()
         if let endObserver {
             NotificationCenter.default.removeObserver(endObserver)
@@ -501,6 +555,7 @@ final class AudioPlayerManager {
         // Another track may have been requested while we waited on cloud I/O.
         guard currentTrack?.id == track.id else { return }
 
+        currentTrackSampleRate = trackSampleRate
         activateAudioSession(trackSampleRate: trackSampleRate)
 
         let item: AVPlayerItem

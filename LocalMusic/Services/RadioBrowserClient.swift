@@ -22,6 +22,11 @@ final class RadioBrowserClient {
     private static let discoveryHost = "all.api.radio-browser.info"
     private static let cacheTTL: TimeInterval = 15 * 60
     private static let defaultLimit = 80
+    private static let pathSegmentAllowed: CharacterSet = {
+        var set = CharacterSet.urlPathAllowed
+        set.remove(charactersIn: "/")
+        return set
+    }()
 
     private(set) var baseHost: String?
     private(set) var lastError: String?
@@ -114,7 +119,9 @@ final class RadioBrowserClient {
     }
 
     func stationsByTag(_ tag: String, forceRefresh: Bool = false) async -> [RadioStation] {
-        let encoded = tag.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? tag
+        // `getJSON` assigns to `percentEncodedPath`, so encode exactly once
+        // here and keep `/` (e.g. "r&b/soul") inside the segment.
+        let encoded = tag.addingPercentEncoding(withAllowedCharacters: Self.pathSegmentAllowed) ?? tag
         let key = "tag:\(tag.lowercased())"
         return await stations(
             cacheKey: key,
@@ -208,10 +215,26 @@ final class RadioBrowserClient {
         if affectsLoading { isLoading = true }
         defer { if affectsLoading { isLoading = false } }
         let host = try await resolveWorkingHost(force: false)
+        do {
+            return try await getJSON(host: host, path: path, query: query)
+        } catch let error as RadioBrowserError {
+            // A 4xx is the request's fault; only a server failure means the mirror is bad.
+            guard case .httpStatus(let code) = error, code >= 500 else { throw error }
+        } catch {
+            // Transport failure (timeout, DNS, TLS): fall through and re-resolve.
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw error }
+        }
+        // The cached mirror went bad mid-session: drop it and try another once.
+        baseHost = nil
+        let fresh = try await resolveWorkingHost(force: true)
+        return try await getJSON(host: fresh, path: path, query: query)
+    }
+
+    private func getJSON(host: String, path: String, query: [URLQueryItem]) async throws -> Data {
         var components = URLComponents()
         components.scheme = "https"
         components.host = host
-        components.path = path
+        components.percentEncodedPath = path
         if !query.isEmpty {
             components.queryItems = query
         }

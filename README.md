@@ -2,8 +2,6 @@
 
 [![Platform](https://img.shields.io/badge/platform-iOS%2018%2B-lightgrey)](#build)
 [![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue)](LICENSE)
-[![Build](https://github.com/erickgrau/ChibiAudio/actions/workflows/build.yml/badge.svg)](https://github.com/erickgrau/ChibiAudio/actions/workflows/build.yml)
-[![Tests](https://github.com/erickgrau/ChibiAudio/actions/workflows/test.yml/badge.svg)](https://github.com/erickgrau/ChibiAudio/actions/workflows/test.yml)
 
 Bit-perfect offline playback for the music you already own: local files, iCloud, Google Drive, Plex, and Bandcamp, in one app, with a real THX Onyx DAC path underneath. Fork of [j23n/localmusic](https://github.com/j23n/localmusic) (MPL-2.0), not a greenfield app.
 
@@ -92,6 +90,13 @@ open LocalMusic.xcodeproj
 ```
 
 Skipping `xcodegen` after checkout yields missing-file / “TabRouter not found” archive failures even when the Swift sources are present.
+
+There is no hosted CI. Run the tests locally before every archive:
+
+```bash
+xcodebuild test -project LocalMusic.xcodeproj -scheme LocalMusic -destination 'platform=iOS Simulator,name=<your simulator>'
+```
+
 - Xcode 16+, iOS 18+, Swift 6
 - Set your Team under Signing & Capabilities (team ID left empty in `project.yml` on purpose)
 - Bundle ID: `com.chibitek.ChibiAudio` · Display name: **ChibiAudio** · App Store subtitle: **Offline HiFi Player**

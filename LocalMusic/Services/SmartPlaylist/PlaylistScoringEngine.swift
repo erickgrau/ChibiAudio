@@ -57,6 +57,8 @@ enum PlaylistScoringEngine {
         }
     }
 
+    static let relevanceThreshold = 0.05
+
     /// Build the blended seed profile, then score / rank owned candidates.
     static func generate(_ input: Input) -> [ScoredPlaylistTrack] {
         guard !input.seeds.isEmpty, !input.candidates.isEmpty else { return [] }
@@ -69,7 +71,7 @@ enum PlaylistScoringEngine {
         for track in input.candidates {
             if input.excludeSeedTracks, seedIDs.contains(track.id) { continue }
             let (score, reasons) = score(track: track, profile: profile, salt: input.shuffleSalt)
-            guard score > 0.05 else { continue }
+            guard score > relevanceThreshold else { continue }
             scored.append(ScoredPlaylistTrack(track: track, score: score, reasons: reasons))
         }
 
@@ -136,6 +138,12 @@ enum PlaylistScoringEngine {
         let seedURLKeys = Set(input.seedTracks.map { $0.url.standardized.absoluteString })
         let seedArtistKeys = artists
 
+        // One lookup table instead of a linear candidate scan per playlist URL.
+        var candidatesByURL: [URL: Track] = [:]
+        for track in input.candidates {
+            candidatesByURL[track.url.standardized] = candidatesByURL[track.url.standardized] ?? track
+        }
+
         for playlist in input.playlists {
             let urls = playlist.trackURLs.map(\.standardized)
             let touchesSeed = urls.contains { seedURLKeys.contains($0.absoluteString) }
@@ -150,7 +158,7 @@ enum PlaylistScoringEngine {
             guard touchesSeed else { continue }
 
             for url in urls {
-                if let match = input.candidates.first(where: { $0.url.standardized == url }) {
+                if let match = candidatesByURL[url] {
                     coTrackIDs.insert(match.id)
                     coArtists.insert(normalize(match.artist))
                 }
@@ -166,7 +174,8 @@ enum PlaylistScoringEngine {
             seedTrackIDs: seedIDs,
             artists: artists.filter { !$0.isEmpty && $0 != "unknown artist" },
             genres: genres,
-            years: years,
+            // Distinct years only: the nearest-year scan runs once per candidate.
+            years: Array(Set(years)).sorted(),
             albums: albums.filter { !$0.isEmpty && $0 != "unknown album" },
             relatedArtists: related,
             coArtists: coArtists.subtracting(artists),
@@ -236,7 +245,9 @@ enum PlaylistScoringEngine {
         }
 
         // Tiny salt-stable jitter so regenerate feels fresh without chaos.
-        if salt != 0 {
+        // Only reorders tracks that already cleared the relevance cutoff in
+        // `generate`; it must never lift a zero-relevance track over it.
+        if salt != 0, score > relevanceThreshold {
             score += jitter(for: track.id, salt: salt) * 0.35
         }
 

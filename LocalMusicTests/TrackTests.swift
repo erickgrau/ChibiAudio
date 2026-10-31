@@ -33,6 +33,29 @@ struct TrackTests {
         #expect(bytes[6] & 0xF0 == 0x50)
     }
 
+    @Test func stableID_remoteStreamsDifferByQuery() {
+        let a = Track.stableID(for: URL(string: "https://host/rest/stream.view?id=1&u=me&t=abc&s=salt1")!)
+        let b = Track.stableID(for: URL(string: "https://host/rest/stream.view?id=2&u=me&t=abc&s=salt1")!)
+        #expect(a != b)
+    }
+
+    @Test func stableID_remoteIgnoresCredentialsAndOrder() {
+        let a = Track.stableID(for: URL(string: "https://host/rest/stream.view?id=7&v=1.16&u=me&t=aaa&s=one")!)
+        let b = Track.stableID(for: URL(string: "https://host/rest/stream.view?s=two&t=bbb&v=1.16&id=7&u=me")!)
+        #expect(a == b)
+    }
+
+    @Test func stableID_remoteDiffersByHost() {
+        let a = Track.stableID(for: URL(string: "https://one.example/stream")!)
+        let b = Track.stableID(for: URL(string: "https://two.example/stream")!)
+        #expect(a != b)
+    }
+
+    @Test func identityKey_fileURLIsPath() {
+        let url = URL(fileURLWithPath: "/Music/Album/song.mp3")
+        #expect(Track.identityKey(for: url) == "/Music/Album/song.mp3")
+    }
+
     // MARK: - RepeatMode
 
     @Test func repeatMode_rawValueRoundTrip() {

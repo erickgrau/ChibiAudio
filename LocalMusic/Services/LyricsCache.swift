@@ -50,8 +50,9 @@ enum LyricsCache {
     }
 
     private static func key(for trackURL: URL) -> String {
-        let path = trackURL.standardized.path
-        let digest = SHA256.hash(data: Data(path.utf8))
+        // File URLs hash the path (unchanged on-disk keys); remote streams
+        // need the query too, or every Subsonic track shares one entry.
+        let digest = SHA256.hash(data: Data(Track.identityKey(for: trackURL).utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 

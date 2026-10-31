@@ -58,7 +58,10 @@ struct DACSession: Sendable {
         } else {
             preferred = requestedCeilingSampleRate
         }
-        try session.setPreferredSampleRate(preferred)
+        // Re-requesting the same rate still fires a route-configuration change.
+        if session.preferredSampleRate != preferred {
+            try session.setPreferredSampleRate(preferred)
+        }
         // IO buffer: slightly larger is fine for USB DAC stability; we are not
         // chasing ultra-low latency for music listening.
         try? session.setPreferredIOBufferDuration(0.02)

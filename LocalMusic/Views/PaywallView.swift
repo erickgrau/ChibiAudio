@@ -127,7 +127,7 @@ struct PaywallView: View {
 
                 Button("Restore Purchases") {
                     Task {
-                        let ok = await plus.restore()
+                        guard let ok = await plus.restore() else { return }
                         restoreMessage = ok
                             ? "Plus restored. Thanks for supporting ChibiAudio."
                             : "No active Plus subscription found for this Apple ID."

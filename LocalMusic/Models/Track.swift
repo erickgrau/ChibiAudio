@@ -48,9 +48,12 @@ struct Track: Identifiable, Codable, Hashable, Sendable {
     /// bytes with RFC 4122 variant + version-5 nibbles set so the value is
     /// a syntactically valid UUID. (It is not a strict v5 UUID — there's no
     /// namespace input — but Foundation only cares about the layout.)
+    ///
+    /// Remote URLs hash host + path + query, because Subsonic / Bandcamp
+    /// streams share one path and differ only by `id=`. Credential query
+    /// items are dropped so a password change doesn't re-key every track.
     static func stableID(for url: URL) -> UUID {
-        let path = url.standardized.path
-        let digest = SHA256.hash(data: Data(path.utf8))
+        let digest = SHA256.hash(data: Data(identityKey(for: url).utf8))
         var bytes = Array(digest.prefix(16))
         bytes[6] = (bytes[6] & 0x0F) | 0x50
         bytes[8] = (bytes[8] & 0x3F) | 0x80
@@ -58,6 +61,20 @@ struct Track: Identifiable, Codable, Hashable, Sendable {
                            bytes[4],  bytes[5],  bytes[6],  bytes[7],
                            bytes[8],  bytes[9],  bytes[10], bytes[11],
                            bytes[12], bytes[13], bytes[14], bytes[15]))
+    }
+
+    static let credentialQueryItems: Set<String> = ["u", "p", "t", "s", "x-plex-token"]
+
+    static func identityKey(for url: URL) -> String {
+        guard !url.isFileURL,
+              var components = URLComponents(url: url.standardized, resolvingAgainstBaseURL: false)
+        else { return url.standardized.path }
+        components.queryItems = components.queryItems?
+            .filter { !credentialQueryItems.contains($0.name.lowercased()) }
+            .sorted { ($0.name, $0.value ?? "") < ($1.name, $1.value ?? "") }
+        if components.queryItems?.isEmpty == true { components.queryItems = nil }
+        components.fragment = nil
+        return components.string ?? url.standardized.path
     }
 
     static func == (lhs: Track, rhs: Track) -> Bool {

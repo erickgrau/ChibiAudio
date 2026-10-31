@@ -56,7 +56,8 @@ actor MusicCatalogClient {
             guard !n.isEmpty, n != key, seen.insert(n).inserted else { return nil }
             return raw.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        relatedCache[key] = (Date(), unique)
+        // An empty answer is usually a failed / rate-limited request; don't pin it for 6h.
+        if !unique.isEmpty { relatedCache[key] = (Date(), unique) }
         return Array(unique.prefix(limit))
     }
 
@@ -69,7 +70,7 @@ actor MusicCatalogClient {
             return Array(cached.tags.prefix(limit))
         }
         let tags = await musicBrainzTags(named: name)
-        tagsCache[key] = (Date(), tags)
+        if !tags.isEmpty { tagsCache[key] = (Date(), tags) }
         return Array(tags.prefix(limit))
     }
 
@@ -181,13 +182,17 @@ actor MusicCatalogClient {
         return data
     }
 
+    /// Reserves the next slot before suspending: actor reentrancy would
+    /// otherwise let concurrent callers read the same `lastRequestAt` and
+    /// fire together, tripping MusicBrainz's 1 req/s limit.
     private func throttle() async {
-        let elapsed = Date().timeIntervalSince(lastRequestAt)
-        if elapsed < Self.minInterval {
-            let delay = Self.minInterval - elapsed
+        let now = Date()
+        let slot = max(now, lastRequestAt.addingTimeInterval(Self.minInterval))
+        lastRequestAt = slot
+        let delay = slot.timeIntervalSince(now)
+        if delay > 0 {
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
         }
-        lastRequestAt = Date()
     }
 
     // MARK: - Parsing (testable)

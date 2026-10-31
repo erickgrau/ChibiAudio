@@ -166,4 +166,21 @@ struct SmartPlaylistTests {
         #expect(PlaylistSeed.maxSeeds == 5)
         #expect(song.displayTitle == "X")
     }
+
+    @Test func scoring_jitterNeverAdmitsIrrelevantTracks() {
+        let seed = Fixtures.track(title: "Seed", artist: "Alpha", album: "A1", path: "/lib/seed.mp3", genre: "Jazz", year: 1998)
+        let irrelevant = (0..<40).map { i in
+            Fixtures.track(title: "Noise \(i)", artist: "Other \(i)", album: "N\(i)", path: "/lib/n\(i).mp3", genre: "Metal", year: 1950)
+        }
+        for salt: UInt64 in [1, 7, 42, 9_999] {
+            let results = PlaylistScoringEngine.generate(.init(
+                seeds: [.song(from: seed)],
+                candidates: [seed] + irrelevant,
+                seedTracks: [seed],
+                excludeSeedTracks: true,
+                shuffleSalt: salt
+            ))
+            #expect(results.isEmpty, "salt \(salt) admitted \(results.count) unrelated tracks")
+        }
+    }
 }
