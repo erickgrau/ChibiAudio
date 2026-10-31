@@ -89,32 +89,3 @@ private struct GoogleAdBannerRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: BannerView, context: Context) {}
 }
 #endif
-
-// MARK: - Tab chrome (ads + mini player)
-
-/// Banner above the mini player on browsing tabs. Never used on Now Playing.
-struct AdAwareMiniPlayerModifier: ViewModifier {
-    @Environment(AudioPlayerManager.self) private var player
-    @Environment(PlusStore.self) private var plus
-    let onTap: () -> Void
-
-    func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                if AdMobConfig.shouldShowBanner(isPlusActive: plus.isPlusActive) {
-                    AdBannerView()
-                }
-                if player.currentTrack != nil {
-                    MiniPlayerView(onTap: onTap)
-                }
-            }
-        }
-    }
-}
-
-extension View {
-    /// Mini player with optional free-tier ad banner (not for Now Playing).
-    func adAwareMiniPlayer(onTap: @escaping () -> Void) -> some View {
-        modifier(AdAwareMiniPlayerModifier(onTap: onTap))
-    }
-}

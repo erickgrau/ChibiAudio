@@ -25,13 +25,12 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle("Library")
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiNavChrome()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: PlatformToolbar.trailing) {
                     sortMenu
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: PlatformToolbar.trailing) {
                     Button {
                         showSettings = true
                     } label: {
@@ -95,7 +94,7 @@ struct LibraryView: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(ChibiTheme.amber)
 
-            Text("Select a folder on this iPhone, iCloud Drive, or another Files provider (e.g. Google Drive) to build your library — plays fully offline once files are local.")
+            Text(emptyFolderHint)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(ChibiTheme.textSecondary)
                 .padding(.horizontal, 32)
@@ -107,7 +106,11 @@ struct LibraryView: View {
             }
 
             Button {
+                #if os(iOS)
                 showFolderPicker = true
+                #else
+                DocumentPicker.pickFolder { adoptFolder($0) }
+                #endif
             } label: {
                 Label("Choose Folder", systemImage: "folder")
                     .font(.headline)
@@ -120,16 +123,32 @@ struct LibraryView: View {
 
             Spacer()
         }
+        #if os(iOS)
         .sheet(isPresented: $showFolderPicker) {
             DocumentPicker { pickerURL in
-                _ = pickerURL.startAccessingSecurityScopedResource()
-                PersistenceManager.shared.saveFolderBookmark(pickerURL)
-                pickerURL.stopAccessingSecurityScopedResource()
-                Task {
-                    await library.adoptSavedFolder()
-                }
+                adoptFolder(pickerURL)
             }
         }
+        #endif
+    }
+
+    /// Persists a freshly picked music folder and reloads the library,
+    /// mirroring SettingsView's flow on both platforms.
+    private func adoptFolder(_ pickerURL: URL) {
+        _ = pickerURL.startAccessingSecurityScopedResource()
+        PersistenceManager.shared.saveFolderBookmark(pickerURL)
+        pickerURL.stopAccessingSecurityScopedResource()
+        Task {
+            await library.adoptSavedFolder()
+        }
+    }
+
+    private var emptyFolderHint: String {
+        #if os(iOS)
+        "Select a folder on this iPhone, iCloud Drive, or another Files provider (e.g. Google Drive) to build your library — plays fully offline once files are local."
+        #else
+        "Select a music folder on this Mac, an external drive, or iCloud Drive to build your library — plays fully offline once files are local."
+        #endif
     }
 
     private var emptyStateView: some View {
@@ -230,7 +249,7 @@ struct LibraryView: View {
             }
         }
         .listStyle(.plain)
-        .listSectionSpacing(.compact)
+        .chibiCompactSectionSpacing()
         .environment(\.defaultMinListRowHeight, 0)
         .chibiListChrome()
         .contentMargins(.bottom, 80, for: .scrollContent)
@@ -239,7 +258,8 @@ struct LibraryView: View {
 
 // MARK: - Row helpers
 
-/// Wraps a `TrackRow` with the play action and Add-to-Playlist context menu.
+/// Wraps a `TrackRow` with the play action, queue actions, and the
+/// Add-to-Playlist context menu.
 /// Pulled out so SwiftUI doesn't re-evaluate the entire `LibraryView` body
 /// each time `player.currentTrack` ticks.
 private struct TrackRowButton: View {
@@ -262,6 +282,7 @@ private struct TrackRowButton: View {
                      isActivelyPlaying: player.isPlaying && player.currentTrack?.id == track.id)
         }
         .contextMenu {
+            QueueMenuItems(track: track)
             Button {
                 showAddToPlaylist = true
             } label: {
@@ -279,6 +300,7 @@ private struct TrackRowButton: View {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
         }
+        .queueSwipeActions(for: track)
         .sheet(isPresented: $showAddToPlaylist) {
             AddToPlaylistSheet(payload: .local(track))
         }

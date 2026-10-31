@@ -293,6 +293,48 @@ final class PersistenceManagerTests {
         #expect(await pm.folderContentModificationDateAsync(at: missing) == nil)
     }
 
+    // MARK: - Playback queue
+
+    @Test func queue_returnsNilWhenUnset() {
+        let pm = PersistenceManager(documentsURL: tempDir, userDefaults: defaults)
+        #expect(pm.loadQueue() == nil)
+    }
+
+    @Test func queue_roundTripAcrossInstances() {
+        var queue = PlaybackQueue()
+        let tracks = Fixtures.tracks(4)
+        _ = queue.play(track: tracks[1], queue: tracks, startIndex: 1)
+        _ = queue.playNext([tracks[3]])
+
+        let writer = PersistenceManager(documentsURL: tempDir, userDefaults: defaults)
+        writer.saveQueue(queue)
+        _ = writer.loadQueue() // drains the writer's ioQueue
+
+        let loaded = PersistenceManager(documentsURL: tempDir, userDefaults: defaults).loadQueue()
+        #expect(loaded == queue)
+        #expect(loaded?.currentTrack?.id == tracks[1].id)
+        #expect(loaded?.upNext.map(\.id) == [tracks[3].id, tracks[2].id, tracks[3].id])
+    }
+
+    @Test func queue_latestSaveWins() {
+        let pm = PersistenceManager(documentsURL: tempDir, userDefaults: defaults)
+        var queue = PlaybackQueue()
+        let tracks = Fixtures.tracks(3)
+        _ = queue.play(track: tracks[0], queue: tracks, startIndex: 0)
+        pm.saveQueue(queue)
+        queue.clearUpNext()
+        pm.saveQueue(queue)
+
+        #expect(pm.loadQueue()?.upNext.isEmpty == true)
+    }
+
+    @Test func queue_corruptFileReturnsNil() throws {
+        try "not json".write(to: tempDir.appendingPathComponent("queue.json"),
+                             atomically: true, encoding: .utf8)
+        let pm = PersistenceManager(documentsURL: tempDir, userDefaults: defaults)
+        #expect(pm.loadQueue() == nil)
+    }
+
     // MARK: - Helpers
 
     private func writeLibraryJSON(_ contents: String) throws {

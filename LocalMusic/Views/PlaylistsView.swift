@@ -68,25 +68,24 @@ struct PlaylistsView: View {
                         }
                     }
                     .listStyle(.plain)
-                    .listSectionSpacing(.compact)
+                    .chibiCompactSectionSpacing()
                     .environment(\.defaultMinListRowHeight, 0)
                 }
             }
             .navigationTitle("Playlists")
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiNavChrome()
             .refreshable {
                 library.refreshPlaylistsFromDisk()
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: PlatformToolbar.leading) {
                     Button {
                         showSmartPlaylist = true
                     } label: {
                         Label("Make a Playlist", systemImage: "sparkles")
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: PlatformToolbar.trailing) {
                     Button {
                         newPlaylistName = ""
                         showNewPlaylistAlert = true

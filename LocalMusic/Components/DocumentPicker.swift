@@ -1,6 +1,9 @@
 import SwiftUI
+#if os(iOS)
 import UniformTypeIdentifiers
+#endif
 
+#if os(iOS)
 struct DocumentPicker: UIViewControllerRepresentable {
     let onPick: (URL) -> Void
 
@@ -34,3 +37,25 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
     }
 }
+#else
+import AppKit
+
+/// Folder selection on the Mac target. `NSOpenPanel` grants the sandbox
+/// extension the security-scoped bookmark persists across relaunches.
+@MainActor
+enum DocumentPicker {
+    static func pickFolder(onPick: @escaping (URL) -> Void) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose your music folder"
+        guard panel.runModal() == .OK, let url = panel.url else {
+            Log.ui.debug("Folder picker dismissed without selection")
+            return
+        }
+        Log.ui.info("Folder picked: \(url.lastPathComponent)")
+        onPick(url)
+    }
+}
+#endif

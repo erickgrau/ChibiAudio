@@ -93,8 +93,7 @@ struct BandcampBrowserView: View {
         }
         .navigationTitle("Bandcamp")
         .chibiListChrome()
-        .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .chibiNavChrome()
         .tint(ChibiTheme.amber)
         .sheet(item: $addPayload) { payload in
             AddToPlaylistSheet(payload: payload)

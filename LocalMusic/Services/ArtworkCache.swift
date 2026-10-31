@@ -1,7 +1,11 @@
 import CryptoKit
 import Foundation
 import ImageIO
+#if os(iOS)
 import UIKit
+#else
+import AppKit
+#endif
 
 /// Stores audio file artwork outside of `Track` so the in-memory library
 /// stays slim. Originals live on disk under `Documents/Artwork/`; thumbnails
@@ -11,14 +15,14 @@ enum ArtworkCache {
     /// `nonisolated(unsafe)` because `NSCache` is internally thread-safe but
     /// not `Sendable`-marked in the iOS SDK, and we serve it from arbitrary
     /// threads (downsample worker, MainActor view code).
-    nonisolated(unsafe) private static let thumbnailMemoryCache: NSCache<NSString, UIImage> = {
-        let cache = NSCache<NSString, UIImage>()
+    nonisolated(unsafe) private static let thumbnailMemoryCache: NSCache<NSString, PlatformImage> = {
+        let cache = NSCache<NSString, PlatformImage>()
         cache.countLimit = 400
         return cache
     }()
 
-    nonisolated(unsafe) private static let fullImageMemoryCache: NSCache<NSString, UIImage> = {
-        let cache = NSCache<NSString, UIImage>()
+    nonisolated(unsafe) private static let fullImageMemoryCache: NSCache<NSString, PlatformImage> = {
+        let cache = NSCache<NSString, PlatformImage>()
         cache.countLimit = 4
         return cache
     }()
@@ -227,24 +231,24 @@ enum ArtworkCache {
 
     /// Any cached thumbnail size for this track. Used by now-playing /
     /// lock-screen code that doesn't know the view's pixel size.
-    static func cachedThumbnail(for trackURL: URL) -> UIImage? {
+    static func cachedThumbnail(for trackURL: URL) -> PlatformImage? {
         anyCachedImage(sha: key(for: trackURL), kind: .thumbnail)
     }
 
     /// Size-specific thumbnail lookup. `maxPixel` is `pointSize * scale`
     /// (same units as `thumbnail(for:pointSize:scale:)`).
-    static func cachedThumbnail(for trackURL: URL, maxPixel: CGFloat) -> UIImage? {
+    static func cachedThumbnail(for trackURL: URL, maxPixel: CGFloat) -> PlatformImage? {
         let key = memoryKey(sha: key(for: trackURL), maxPixel: maxPixel)
         return thumbnailMemoryCache.object(forKey: key as NSString)
     }
 
     /// Any cached full-size decode for this track.
-    static func cachedFullImage(for trackURL: URL) -> UIImage? {
+    static func cachedFullImage(for trackURL: URL) -> PlatformImage? {
         anyCachedImage(sha: key(for: trackURL), kind: .full)
     }
 
     /// Size-specific full-image lookup. `maxPixel` is `pointSize * scale`.
-    static func cachedFullImage(for trackURL: URL, maxPixel: CGFloat) -> UIImage? {
+    static func cachedFullImage(for trackURL: URL, maxPixel: CGFloat) -> PlatformImage? {
         let key = memoryKey(sha: key(for: trackURL), maxPixel: maxPixel)
         return fullImageMemoryCache.object(forKey: key as NSString)
     }
@@ -253,7 +257,7 @@ enum ArtworkCache {
     /// the underlying decode targets `pointSize * scale` pixels.
     static func thumbnail(for trackURL: URL,
                           pointSize: CGFloat,
-                          scale: CGFloat) async -> UIImage? {
+                          scale: CGFloat) async -> PlatformImage? {
         await loadDownsampled(trackURL: trackURL,
                               pointSize: pointSize,
                               scale: scale,
@@ -263,7 +267,7 @@ enum ArtworkCache {
     /// Loads (and caches) a near-full-size image suitable for Now Playing.
     static func fullImage(for trackURL: URL,
                           pointSize: CGFloat,
-                          scale: CGFloat) async -> UIImage? {
+                          scale: CGFloat) async -> PlatformImage? {
         await loadDownsampled(trackURL: trackURL,
                               pointSize: pointSize,
                               scale: scale,
@@ -277,7 +281,7 @@ enum ArtworkCache {
     private static func loadDownsampled(trackURL: URL,
                                         pointSize: CGFloat,
                                         scale: CGFloat,
-                                        cache: NSCache<NSString, UIImage>) async -> UIImage? {
+                                        cache: NSCache<NSString, PlatformImage>) async -> PlatformImage? {
         let sha = key(for: trackURL)
         let maxPixel = max(pointSize * scale, 1)
         let memoryKey = memoryKey(sha: sha, maxPixel: maxPixel)
@@ -287,7 +291,7 @@ enum ArtworkCache {
         if Task.isCancelled { return nil }
 
         let path = fileURL(for: trackURL)
-        let image: UIImage? = await withCheckedContinuation { cont in
+        let image: PlatformImage? = await withCheckedContinuation { cont in
             decodeQueue.addOperation {
                 guard let source = CGImageSourceCreateWithURL(path as CFURL, nil) else {
                     cont.resume(returning: nil); return
@@ -301,7 +305,7 @@ enum ArtworkCache {
                 guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, opts as CFDictionary) else {
                     cont.resume(returning: nil); return
                 }
-                cont.resume(returning: UIImage(cgImage: cg))
+                cont.resume(returning: PlatformImage.make(cgImage: cg, pixelSize: maxPixel))
             }
         }
 
@@ -322,7 +326,7 @@ enum ArtworkCache {
         case full
     }
 
-    private static func anyCachedImage(sha: String, kind: MemoryKind) -> UIImage? {
+    private static func anyCachedImage(sha: String, kind: MemoryKind) -> PlatformImage? {
         memoryLock.lock()
         let keys: Set<String>?
         switch kind {
@@ -342,7 +346,7 @@ enum ArtworkCache {
 
     private static func rememberMemoryKey(_ memoryKey: String,
                                           sha: String,
-                                          cache: NSCache<NSString, UIImage>) {
+                                          cache: NSCache<NSString, PlatformImage>) {
         memoryLock.lock()
         defer { memoryLock.unlock() }
         if cache === thumbnailMemoryCache {

@@ -1,8 +1,11 @@
+#if os(iOS)
 import AVKit
 import SwiftUI
 
 /// System audio route picker (AirPlay / Bluetooth / USB DAC) for Now Playing Soft PASS.
 /// Keeps AVPlayer external playback as the route authority; does not force a custom session path.
+/// iOS-only: on the Mac, output devices are chosen in Sound Settings and the
+/// app follows the system default.
 struct RoutePickerButton: UIViewRepresentable {
     var tint: UIColor = UIColor(ChibiTheme.amber)
 
@@ -22,3 +25,4 @@ struct RoutePickerButton: UIViewRepresentable {
         uiView.activeTintColor = UIColor(ChibiTheme.teal)
     }
 }
+#endif

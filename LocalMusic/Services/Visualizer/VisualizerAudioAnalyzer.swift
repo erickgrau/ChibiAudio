@@ -49,7 +49,9 @@ final class VisualizerAudioAnalyzer {
     @ObservationIgnored private var routeChangeTask: Task<Void, Never>?
 
     private init() {
+        #if os(iOS)
         observeAudioSessionEvents()
+        #endif
     }
 
     /// Enable or disable metering Soft PASS (spectrum modes only).
@@ -148,6 +150,9 @@ final class VisualizerAudioAnalyzer {
     /// session and resumes the main player — calling `.play()` again on the
     /// same tapped player doesn't reliably restart tap callbacks. Rebuild
     /// the tap from scratch instead of trusting it to self-heal.
+    /// (iOS only — macOS has no `AVAudioSession`; taps there follow the
+    /// system's own device-change handling.)
+    #if os(iOS)
     private func observeAudioSessionEvents() {
         interruptionTask = Task { [weak self] in
             let events = NotificationCenter.default.notifications(
@@ -180,6 +185,7 @@ final class VisualizerAudioAnalyzer {
             restartMetering()
         }
     }
+    #endif
 
     /// Tears down and re-creates whichever tap path (parallel analysis
     /// player, or live passthrough) is active, so a fresh render graph is

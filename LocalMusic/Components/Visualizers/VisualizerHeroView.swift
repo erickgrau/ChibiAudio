@@ -22,14 +22,8 @@ struct VisualizerHeroView: View {
     var body: some View {
         VStack(spacing: 10) {
             ZStack(alignment: .bottomTrailing) {
-                TabView(selection: $mode) {
-                    ForEach(availableModes) { m in
-                        modeContent(m)
-                            .tag(m)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .frame(width: size, height: size)
+                heroPager
+                    .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -65,6 +59,24 @@ struct VisualizerHeroView: View {
     }
 
     // MARK: - Mode bodies
+
+    /// Swipeable pager on iOS. `TabViewStyle.page` is unavailable on macOS,
+    /// and there is no swipe gesture to page with, so the Mac shows only the
+    /// selected mode; the mode Menu below is the switcher.
+    @ViewBuilder
+    private var heroPager: some View {
+        #if os(iOS)
+        TabView(selection: $mode) {
+            ForEach(availableModes) { m in
+                modeContent(m)
+                    .tag(m)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        #else
+        modeContent(mode)
+        #endif
+    }
 
     @ViewBuilder
     private func modeContent(_ m: VisualizerMode) -> some View {

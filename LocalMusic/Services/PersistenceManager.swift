@@ -30,12 +30,28 @@ final class PersistenceManager: @unchecked Sendable {
         documentsURL.appendingPathComponent("library.json")
     }
 
+    private var queueURL: URL {
+        documentsURL.appendingPathComponent("queue.json")
+    }
+
     // MARK: - Folder Bookmark
+
+    /// macOS sandbox folders only survive relaunch as security-scoped
+    /// bookmarks; iOS document-picker access persists with a plain bookmark.
+    private enum BookmarkOptions {
+        #if os(macOS)
+        static let creation: URL.BookmarkCreationOptions = .withSecurityScope
+        static let resolution: URL.BookmarkResolutionOptions = .withSecurityScope
+        #else
+        static let creation: URL.BookmarkCreationOptions = []
+        static let resolution: URL.BookmarkResolutionOptions = []
+        #endif
+    }
 
     func saveFolderBookmark(_ url: URL) {
         do {
             let bookmarkData = try url.bookmarkData(
-                options: [],
+                options: BookmarkOptions.creation,
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )
@@ -51,7 +67,7 @@ final class PersistenceManager: @unchecked Sendable {
         do {
             let url = try URL(
                 resolvingBookmarkData: data,
-                options: [],
+                options: BookmarkOptions.resolution,
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             )
@@ -143,6 +159,36 @@ final class PersistenceManager: @unchecked Sendable {
                     Log.library.error("Failed to save library: \(error.localizedDescription)")
                 }
                 cont.resume()
+            }
+        }
+    }
+
+    // MARK: - Playback Queue
+
+    /// Fire-and-forget write on the serial `ioQueue`, so saves land in call
+    /// order and the main actor never waits on encoding a long queue.
+    func saveQueue(_ queue: PlaybackQueue) {
+        let url = queueURL
+        ioQueue.async {
+            do {
+                let data = try JSONEncoder().encode(queue)
+                try data.write(to: url, options: .atomic)
+            } catch {
+                Log.persistence.error("Failed to save queue: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Runs on `ioQueue` so it observes every save enqueued before it.
+    func loadQueue() -> PlaybackQueue? {
+        let url = queueURL
+        return ioQueue.sync {
+            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+            do {
+                return try JSONDecoder().decode(PlaybackQueue.self, from: Data(contentsOf: url))
+            } catch {
+                Log.persistence.error("Failed to load queue: \(error.localizedDescription)")
+                return nil
             }
         }
     }
