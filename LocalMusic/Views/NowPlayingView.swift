@@ -6,6 +6,7 @@ struct NowPlayingView: View {
 
     @State private var showLyrics = false
     @State private var showAddToPlaylist = false
+    @State private var showUpNext = false
     @State private var lyrics: TrackLyrics?
     @State private var lyricsTrackID: UUID?
     @State private var artworkColor: UIColor = .systemGray
@@ -41,6 +42,13 @@ struct NowPlayingView: View {
                         .accessibilityLabel("Lyrics")
 
                         Button {
+                            showUpNext = true
+                        } label: {
+                            Image(systemName: "list.bullet")
+                        }
+                        .accessibilityLabel("Up Next")
+
+                        Button {
                             showAddToPlaylist = true
                         } label: {
                             Image(systemName: "text.badge.plus")
@@ -65,6 +73,9 @@ struct NowPlayingView: View {
             if let track = player.currentTrack {
                 AddToPlaylistSheet(payload: .local(track))
             }
+        }
+        .sheet(isPresented: $showUpNext) {
+            UpNextView()
         }
         .chibiCanvas()
     }

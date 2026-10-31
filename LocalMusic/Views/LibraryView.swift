@@ -239,7 +239,8 @@ struct LibraryView: View {
 
 // MARK: - Row helpers
 
-/// Wraps a `TrackRow` with the play action and Add-to-Playlist context menu.
+/// Wraps a `TrackRow` with the play action, queue actions, and the
+/// Add-to-Playlist context menu.
 /// Pulled out so SwiftUI doesn't re-evaluate the entire `LibraryView` body
 /// each time `player.currentTrack` ticks.
 private struct TrackRowButton: View {
@@ -262,6 +263,7 @@ private struct TrackRowButton: View {
                      isActivelyPlaying: player.isPlaying && player.currentTrack?.id == track.id)
         }
         .contextMenu {
+            QueueMenuItems(track: track)
             Button {
                 showAddToPlaylist = true
             } label: {
@@ -279,6 +281,7 @@ private struct TrackRowButton: View {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
         }
+        .queueSwipeActions(for: track)
         .sheet(isPresented: $showAddToPlaylist) {
             AddToPlaylistSheet(payload: .local(track))
         }

@@ -50,13 +50,16 @@ LocalMusic/
 - `Views/SmartPlaylistView.swift` — Make a Playlist Soft PASS (seeds → generate → preview → save)
 - `Views/PlaylistDetailView.swift` — Playlist tracks with inline missing-file warnings; `AddTracksSheet`, `MissingTrackRow`
 - `Views/MiniPlayerView.swift` — Compact bottom-bar player overlay
+- `Views/UpNextView.swift` — Queue sheet from Now Playing: current track pinned, Up Next reorder/remove/clear
 - `Views/SettingsView.swift` — Folder selection, rescan, stats
 - `Components/DocumentPicker.swift` — `UIViewControllerRepresentable` wrapper for folder picker
 - `Components/ArtworkView.swift` — async-loading artwork with placeholder
+- `Components/QueueActions.swift` — shared Play Next / Add to Queue context-menu items and leading swipe actions
 - `Components/Visualizers/` — Soft PASS Now Playing hero visualizer suite
 ## Key patterns
 
 - Folder access uses security-scoped bookmarks (`PersistenceManager`); `AudioPlayerManager.startAccessingFolder()` must be active for file reads
 - Playlists store `trackURLs: [URL]` and parallel `rawPaths: [String]` — always keep both in sync when mutating
 - Library tracks are matched to playlist entries by comparing `.standardized` URLs
+- `PlaybackQueue` is history + current + Up Next in one array split at `currentIndex`; every mutation goes through `AudioPlayerManager.syncPublishedFromQueue()`, which also persists it to `Documents/queue.json`
 - Playlist files are rewritten atomically on every mutation via `MetadataLoader.writePlaylist()`

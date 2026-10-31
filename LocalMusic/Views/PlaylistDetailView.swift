@@ -258,6 +258,7 @@ private struct PlaylistTrackRowButton: View {
                          && player.currentTrack?.id == track.id)
         }
         .contextMenu {
+            QueueMenuItems(track: track)
             if isLocalFile {
                 Button {
                     renameText = track.title
@@ -272,6 +273,7 @@ private struct PlaylistTrackRowButton: View {
                 }
             }
         }
+        .queueSwipeActions(for: track)
         .alert("Rename Track", isPresented: $showRename) {
             TextField("Title", text: $renameText)
             Button("Cancel", role: .cancel) {}

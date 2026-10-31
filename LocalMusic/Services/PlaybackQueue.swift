@@ -5,7 +5,11 @@ import Foundation
 /// tested without playing audio. `AudioPlayerManager` owns one of these,
 /// applies mutations, and translates the returned `Action` into AVFoundation
 /// calls.
-struct PlaybackQueue: Equatable {
+///
+/// The queue reads as history (`currentQueue[..<currentIndex]`), the current
+/// track, and Up Next (`currentQueue[(currentIndex + 1)...]`). `Codable` so
+/// `PersistenceManager` can restore it across launches.
+struct PlaybackQueue: Equatable, Codable, Sendable {
 
     // MARK: - State
 
@@ -161,6 +165,94 @@ struct PlaybackQueue: Equatable {
         }
     }
 
+    // MARK: - Up Next
+
+    /// Insert `tracks` directly after the current track. Starts playback
+    /// when the queue is empty, otherwise leaves the current track alone.
+    mutating func playNext(_ tracks: [Track]) -> Action {
+        guard !tracks.isEmpty else { return .noop }
+        guard let current = currentTrack else { return start(tracks) }
+        currentQueue.insert(contentsOf: tracks, at: currentIndex + 1)
+        if shuffleEnabled {
+            let anchor = unshuffledQueue.firstIndex(where: { $0.id == current.id })
+                .map { $0 + 1 } ?? unshuffledQueue.endIndex
+            unshuffledQueue.insert(contentsOf: tracks, at: anchor)
+        }
+        return .noop
+    }
+
+    /// Append `tracks` to the end of Up Next. Starts playback when the
+    /// queue is empty.
+    mutating func addToQueue(_ tracks: [Track]) -> Action {
+        guard !tracks.isEmpty else { return .noop }
+        guard currentTrack != nil else { return start(tracks) }
+        currentQueue.append(contentsOf: tracks)
+        if shuffleEnabled {
+            unshuffledQueue.append(contentsOf: tracks)
+        }
+        return .noop
+    }
+
+    /// Reorder within Up Next. Offsets are relative to `upNext`, matching
+    /// SwiftUI's `onMove` contract.
+    mutating func moveUpNext(fromOffsets source: IndexSet, toOffset destination: Int) {
+        guard currentQueue.indices.contains(currentIndex) else { return }
+        var tracks = upNext
+        let valid = source.filter(tracks.indices.contains)
+        let moving = valid.map { tracks[$0] }
+        let insertAt = destination - valid.filter { $0 < destination }.count
+        for offset in valid.reversed() {
+            tracks.remove(at: offset)
+        }
+        tracks.insert(contentsOf: moving, at: min(max(insertAt, 0), tracks.count))
+        currentQueue.replaceSubrange((currentIndex + 1)..., with: tracks)
+    }
+
+    /// Remove Up Next entries at `offsets` (relative to `upNext`).
+    mutating func removeUpNext(atOffsets offsets: IndexSet) {
+        let base = currentIndex + 1
+        let removed = offsets.sorted(by: >)
+            .filter { currentQueue.indices.contains(base + $0) }
+            .map { currentQueue.remove(at: base + $0) }
+        forgetUnshuffled(removed)
+    }
+
+    /// Drop everything after the current track. History is kept so
+    /// Previous still walks back through what already played.
+    mutating func clearUpNext() {
+        guard currentQueue.indices.contains(currentIndex) else { return }
+        let removed = Array(currentQueue[(currentIndex + 1)...])
+        currentQueue.removeSubrange((currentIndex + 1)...)
+        forgetUnshuffled(removed)
+    }
+
+    /// Jump to the Up Next entry at `offset`. The tracks skipped over move
+    /// into history, as if each had played.
+    mutating func skip(toUpNextOffset offset: Int) -> Action {
+        let target = currentIndex + 1 + offset
+        guard offset >= 0, currentQueue.indices.contains(target) else { return .noop }
+        currentIndex = target
+        return .load(target)
+    }
+
+    private mutating func start(_ tracks: [Track]) -> Action {
+        currentQueue = tracks
+        unshuffledQueue = tracks
+        currentIndex = 0
+        return .load(0)
+    }
+
+    /// Keep the pre-shuffle order in step with removals so turning shuffle
+    /// off doesn't resurrect tracks the listener took out.
+    private mutating func forgetUnshuffled(_ removed: [Track]) {
+        guard shuffleEnabled else { return }
+        for track in removed {
+            if let idx = unshuffledQueue.lastIndex(where: { $0.id == track.id }) {
+                unshuffledQueue.remove(at: idx)
+            }
+        }
+    }
+
     mutating func cycleRepeatMode() {
         switch repeatMode {
         case .off: repeatMode = .all
@@ -173,5 +265,13 @@ struct PlaybackQueue: Equatable {
 
     var currentTrack: Track? {
         currentQueue.indices.contains(currentIndex) ? currentQueue[currentIndex] : nil
+    }
+
+    var upNext: [Track] {
+        currentQueue.indices.contains(currentIndex) ? Array(currentQueue[(currentIndex + 1)...]) : []
+    }
+
+    var history: [Track] {
+        Array(currentQueue.prefix(min(max(currentIndex, 0), currentQueue.count)))
     }
 }

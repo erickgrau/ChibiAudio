@@ -35,6 +35,8 @@ final class AudioPlayerManager {
     /// existing view code keeps observing the same surface.
     @ObservationIgnored private var queue = PlaybackQueue()
 
+    @ObservationIgnored private let persistence: PersistenceManager
+
     /// AVFoundation/UIKit handles read-and-cleared from `deinit`, which
     /// Swift 6 treats as nonisolated even when the enclosing class is
     /// `@MainActor`. They're only ever written from MainActor methods, but
@@ -64,7 +66,8 @@ final class AudioPlayerManager {
 
     // MARK: - Init
 
-    init() {
+    init(persistence: PersistenceManager = .shared) {
+        self.persistence = persistence
         let storedShuffle = UserDefaults.standard.bool(forKey: "shuffleEnabled")
         let storedMode: RepeatMode = {
             guard let raw = UserDefaults.standard.string(forKey: "repeatMode"),
@@ -75,6 +78,7 @@ final class AudioPlayerManager {
         repeatMode = storedMode
         queue.shuffleEnabled = storedShuffle
         queue.repeatMode = storedMode
+        restoreQueue()
         // Live-source metering (radio / remote streams): the visualizer taps
         // our own AVPlayerItem instead of opening a second network connection.
         VisualizerAudioAnalyzer.shared.liveItemProvider = { [weak self] in
@@ -279,9 +283,13 @@ final class AudioPlayerManager {
         apply(action)
     }
 
-    /// Resume playback. Idempotent: never pauses.
+    /// Resume playback. Idempotent: never pauses. After a relaunch there is
+    /// no `AVPlayer` yet, so the restored current track is loaded instead.
     func play() {
-        guard let player else { return }
+        guard let player else {
+            if let track = queue.currentTrack { loadAndPlay(track) }
+            return
+        }
         activateAudioSession()
         player.play()
         isPlaying = true
@@ -355,11 +363,57 @@ final class AudioPlayerManager {
         queue.refreshTrackMetadata(using: lookup)
         currentQueue = queue.currentQueue
         currentIndex = queue.currentIndex
+        persistence.saveQueue(queue)
         currentTrack = queue.currentTrack
         if let track = currentTrack {
             duration = track.duration
             updateNowPlayingInfo()
         }
+    }
+
+    // MARK: - Up Next
+
+    var upNext: ArraySlice<Track> {
+        currentQueue.indices.contains(currentIndex) ? currentQueue[(currentIndex + 1)...] : []
+    }
+
+    func playNext(_ tracks: [Track]) {
+        Log.player.info("Play next: \(tracks.count) track(s)")
+        consecutiveLoadFailures = 0
+        let action = queue.playNext(tracks)
+        syncPublishedFromQueue()
+        apply(action)
+    }
+
+    func addToQueue(_ tracks: [Track]) {
+        Log.player.info("Add to queue: \(tracks.count) track(s)")
+        consecutiveLoadFailures = 0
+        let action = queue.addToQueue(tracks)
+        syncPublishedFromQueue()
+        apply(action)
+    }
+
+    func moveUpNext(fromOffsets source: IndexSet, toOffset destination: Int) {
+        queue.moveUpNext(fromOffsets: source, toOffset: destination)
+        syncPublishedFromQueue()
+    }
+
+    func removeUpNext(atOffsets offsets: IndexSet) {
+        queue.removeUpNext(atOffsets: offsets)
+        syncPublishedFromQueue()
+    }
+
+    func clearUpNext() {
+        Log.player.info("Clear Up Next")
+        queue.clearUpNext()
+        syncPublishedFromQueue()
+    }
+
+    func skip(toUpNextOffset offset: Int) {
+        consecutiveLoadFailures = 0
+        let action = queue.skip(toUpNextOffset: offset)
+        syncPublishedFromQueue()
+        apply(action)
     }
 
     // MARK: - Shuffle Toggle
@@ -406,9 +460,25 @@ final class AudioPlayerManager {
         }
     }
 
+    /// Mirrors queue state onto the observed properties and persists it.
+    /// Every queue mutation funnels through here, so this is the save point.
     private func syncPublishedFromQueue() {
         if currentQueue != queue.currentQueue { currentQueue = queue.currentQueue }
         if currentIndex != queue.currentIndex { currentIndex = queue.currentIndex }
+        persistence.saveQueue(queue)
+    }
+
+    /// Show the last session's queue paused on its current track. Shuffle
+    /// and repeat keep their own `UserDefaults` keys, which win.
+    private func restoreQueue() {
+        guard var saved = persistence.loadQueue(), let track = saved.currentTrack else { return }
+        saved.shuffleEnabled = queue.shuffleEnabled
+        saved.repeatMode = queue.repeatMode
+        queue = saved
+        currentQueue = saved.currentQueue
+        currentIndex = saved.currentIndex
+        currentTrack = track
+        duration = track.duration
     }
 
     /// Natural end-of-track. Goes through `queue.next()` so Repeat One
