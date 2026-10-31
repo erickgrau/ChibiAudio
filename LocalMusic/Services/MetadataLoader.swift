@@ -1,5 +1,4 @@
 import AVFoundation
-import UIKit
 
 /// Progress payload published while a folder scan is in flight.
 struct ScanProgress: Sendable, Equatable {

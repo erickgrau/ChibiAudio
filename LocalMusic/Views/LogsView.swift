@@ -1,5 +1,7 @@
 import SwiftUI
+#if os(iOS)
 import UIKit
+#endif
 
 struct LogsView: View {
     @State private var filterLevel: LogStore.Entry.Level? = nil
@@ -13,6 +15,15 @@ struct LogsView: View {
         f.dateFormat = "HH:mm:ss.SSS"
         return f
     }()
+
+    /// iOS pins the filter field into the nav bar drawer; macOS has one default spot.
+    private static var searchPlacement: SearchFieldPlacement {
+        #if os(iOS)
+        .navigationBarDrawer(displayMode: .always)
+        #else
+        .automatic
+        #endif
+    }
 
     private var filteredEntries: [LogStore.Entry] {
         let needle = searchText.lowercased()
@@ -33,15 +44,15 @@ struct LogsView: View {
     var body: some View {
         contentBody
             .navigationTitle("Logs")
-            .navigationBarTitleDisplayMode(.inline)
+            .chibiInlineNavTitle()
             .searchable(text: $searchText,
-                        placement: .navigationBarDrawer(displayMode: .always),
+                        placement: Self.searchPlacement,
                         prompt: "Filter by message or category")
             .onAppear { isFollowing = true }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { filterMenu }
+                ToolbarItem(placement: PlatformToolbar.leading) { filterMenu }
 
-                ToolbarItemGroup(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: PlatformToolbar.trailing) {
                     Button {
                         isFollowing.toggle()
                     } label: {
@@ -50,7 +61,7 @@ struct LogsView: View {
                     .help(isFollowing ? "Auto-scrolling to latest" : "Scroll to latest paused")
 
                     Button {
-                        UIPasteboard.general.string = logStore.asText
+                        copyLogsToPasteboard()
                         showCopyAlert = true
                     } label: {
                         Image(systemName: "doc.on.doc")
@@ -187,6 +198,14 @@ struct LogsView: View {
         }
     }
 
+    private func copyLogsToPasteboard() {
+        #if os(iOS)
+        UIPasteboard.general.string = logStore.asText
+        #else
+        NSPasteboard.general.setString(logStore.asText, forType: .string)
+        #endif
+    }
+
     private func presentShareSheet() {
         let text = logStore.asText
         let stamp = Date().formatted(.iso8601.year().month().day())
@@ -197,11 +216,13 @@ struct LogsView: View {
     }
 }
 
-/// Locates the topmost view controller and presents a `UIActivityViewController`,
-/// handling iPad popover anchoring.
+/// Shares files/text with the system UI. iOS locates the topmost view
+/// controller and presents a `UIActivityViewController` with iPad popover
+/// anchoring; the Mac target uses the standard sharing service picker.
 @MainActor
 enum ShareSheet {
     static func present(items: [Any]) {
+        #if os(iOS)
         let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = scene.keyWindow else { return }
@@ -214,6 +235,12 @@ enum ShareSheet {
             x: window.bounds.midX, y: window.safeAreaInsets.top, width: 0, height: 0
         )
         topVC?.present(vc, animated: true)
+        #else
+        guard let contentView = NSApp.keyWindow?.contentView else { return }
+        NSSharingServicePicker(items: items).show(
+            relativeTo: .zero, of: contentView, preferredEdge: .minY
+        )
+        #endif
     }
 }
 

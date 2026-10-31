@@ -31,9 +31,8 @@ struct PaywallView: View {
             }
             .chibiListChrome()
             .navigationTitle("ChibiAudio Plus")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiInlineNavTitle()
+            .chibiNavChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }

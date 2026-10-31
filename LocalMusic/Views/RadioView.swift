@@ -61,10 +61,9 @@ struct RadioView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle("Radio")
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiNavChrome()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: PlatformToolbar.trailing) {
                     if segment == .favorites {
                         Button {
                             showAdd = true
@@ -331,8 +330,7 @@ struct RadioView: View {
             }
         }
         .navigationTitle(title)
-        .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .chibiNavChrome()
         .chibiListChrome()
     }
 

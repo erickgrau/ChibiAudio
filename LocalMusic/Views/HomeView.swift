@@ -49,10 +49,9 @@ struct HomeView: View {
             }
             .contentMargins(.bottom, 80, for: .scrollContent)
             .navigationTitle("Home")
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiNavChrome()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: PlatformToolbar.trailing) {
                     Button {
                         showSettings = true
                     } label: {
@@ -75,16 +74,13 @@ struct HomeView: View {
             .sheet(isPresented: $showPlexSignIn) {
                 PlexSignInView()
             }
+            #if os(iOS)
             .sheet(isPresented: $showFolderPicker) {
                 DocumentPicker { pickerURL in
-                    _ = pickerURL.startAccessingSecurityScopedResource()
-                    PersistenceManager.shared.saveFolderBookmark(pickerURL)
-                    pickerURL.stopAccessingSecurityScopedResource()
-                    Task {
-                        await library.adoptSavedFolder()
-                    }
+                    adoptFolder(pickerURL)
                 }
             }
+            #endif
             .chibiCanvas()
             .tint(ChibiTheme.amber)
         }
@@ -95,11 +91,15 @@ struct HomeView: View {
             Text("No library yet")
                 .font(ChibiTheme.titleFont())
                 .foregroundStyle(ChibiTheme.textPrimary)
-            Text("Add a folder on this iPhone, iCloud Drive, or another Files provider to start listening.")
+            Text(folderHintText)
                 .font(.subheadline)
                 .foregroundStyle(ChibiTheme.textSecondary)
             Button {
+                #if os(iOS)
                 showFolderPicker = true
+                #else
+                DocumentPicker.pickFolder { adoptFolder($0) }
+                #endif
             } label: {
                 Label("Add Folder", systemImage: "folder.badge.plus")
                     .font(.headline)
@@ -111,6 +111,25 @@ struct HomeView: View {
         }
         .padding(18)
         .chibiGlassCard(cornerRadius: 18)
+    }
+
+    private var folderHintText: String {
+        #if os(iOS)
+        "Add a folder on this iPhone, iCloud Drive, or another Files provider to start listening."
+        #else
+        "Add a folder on this Mac, an external drive, or iCloud Drive to start listening."
+        #endif
+    }
+
+    /// Persists a freshly picked music folder and reloads the library,
+    /// mirroring LibraryView's flow on both platforms.
+    private func adoptFolder(_ pickerURL: URL) {
+        _ = pickerURL.startAccessingSecurityScopedResource()
+        PersistenceManager.shared.saveFolderBookmark(pickerURL)
+        pickerURL.stopAccessingSecurityScopedResource()
+        Task {
+            await library.adoptSavedFolder()
+        }
     }
 }
 

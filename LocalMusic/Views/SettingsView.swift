@@ -25,7 +25,9 @@ struct SettingsView: View {
     @State private var showPaywall = false
     @State private var showWhatsNew = false
     @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
+    #if os(iOS)
     @AppStorage(DACSession.dacModeDefaultsKey) private var dacModeEnabled = false
+    #endif
     @State private var showPlexSignIn = false
     @State private var confirmPlexSignOut = false
     @State private var bandcampServer = BandcampSubsonicClient.shared.serverURLString
@@ -59,7 +61,11 @@ struct SettingsView: View {
 
                 Section {
                     Button {
+                        #if os(iOS)
                         showFolderPicker = true
+                        #else
+                        DocumentPicker.pickFolder { adoptFolder($0) }
+                        #endif
                     } label: {
                         LabeledContent {
                             Text(library.folderURL?.lastPathComponent ?? "Not selected")
@@ -103,10 +109,15 @@ struct SettingsView: View {
                 } header: {
                     Text("Music Folder")
                 } footer: {
+                    #if os(iOS)
                     Text("Pick On My iPhone, app Documents, iCloud Drive, or Google Drive (install the Drive app and enable it under Files). Bookmarks persist; cloud files download-to-play when the provider supports it.")
+                    #else
+                    Text("Pick your music folder. Access survives relaunches via a security-scoped bookmark (read-only, like the iOS picker).")
+                    #endif
                 }
 
                 Section {
+                    #if os(iOS)
                     Toggle("Hi-res / DAC mode", isOn: $dacModeEnabled)
                         .tint(ChibiTheme.teal)
                     DACRouteIndicator(
@@ -124,13 +135,22 @@ struct SettingsView: View {
                     } label: {
                         Label("Equalizer", systemImage: "slider.horizontal.3")
                     }
+                    #if os(iOS)
+                    .onChange(of: dacModeEnabled) { _, _ in
+                        player.reloadAudioSessionPreference()
+                    }
+                    #endif
+                    #else
+                    LabeledContent("Output", value: player.audioRouteSummary)
+                    #endif
                 } header: {
                     Text("Audio · THX Onyx")
                 } footer: {
+                    #if os(iOS)
                     Text("Reference DAC: THX Onyx (ESS ES9281PRO). DAC mode maximizes preferred sample rate for USB and forces EQ off for a cleaner bit-perfect PCM path. MQA = hardware renderer on the Onyx — no software MQA decode in free ChibiAudio. DSD prefers DoP (encoder not in free v1 yet; never silent lossy fall-back).")
-                }
-                .onChange(of: dacModeEnabled) { _, _ in
-                    player.reloadAudioSessionPreference()
+                    #else
+                    Text("ChibiAudio for Mac plays through the system default output and follows device changes automatically. Select your DAC (e.g. THX Onyx) in Sound Settings — the app never forces a sample rate.")
+                    #endif
                 }
 
                 Section {
@@ -159,14 +179,20 @@ struct SettingsView: View {
 
                 Section {
                     TextField("Server URL", text: $bandcampServer)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
                         .keyboardType(.URL)
+                        #endif
+                        .autocorrectionDisabled()
                     TextField("Subsonic username", text: $bandcampUser)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .autocorrectionDisabled()
                     SecureField("Subsonic password", text: $bandcampPassword)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .autocorrectionDisabled()
                     Button("Save Bandcamp Settings") {
                         let client = BandcampSubsonicClient.shared
@@ -223,6 +249,7 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    #if os(iOS)
                     if plus.isPlusActive {
                         Text("Ads are off while Plus is active.")
                             .foregroundStyle(ChibiTheme.textSecondary)
@@ -233,6 +260,10 @@ struct SettingsView: View {
                         Text("Ads stay off until an AdMob app ID is configured (empty in CI builds).")
                             .foregroundStyle(ChibiTheme.textSecondary)
                     }
+                    #else
+                    Text("The Mac app has no ads.")
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                    #endif
                 } header: {
                     Text("Ads")
                 }
@@ -310,26 +341,22 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .chibiInlineNavTitle()
             .chibiListChrome()
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiNavChrome()
             .tint(ChibiTheme.amber)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
+            #if os(iOS)
             .sheet(isPresented: $showFolderPicker) {
                 DocumentPicker { pickerURL in
-                    _ = pickerURL.startAccessingSecurityScopedResource()
-                    PersistenceManager.shared.saveFolderBookmark(pickerURL)
-                    pickerURL.stopAccessingSecurityScopedResource()
-                    Task {
-                        await library.adoptSavedFolder()
-                    }
+                    adoptFolder(pickerURL)
                 }
             }
+            #endif
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
             }
@@ -385,6 +412,18 @@ struct SettingsView: View {
             } label: {
                 Label("Dismiss", systemImage: "xmark.circle")
             }
+        }
+    }
+
+    /// Persists a freshly picked music folder and reloads the library.
+    /// Identical flow on both platforms: the picker grants scoped access,
+    /// the bookmark keeps it across relaunches.
+    private func adoptFolder(_ pickerURL: URL) {
+        _ = pickerURL.startAccessingSecurityScopedResource()
+        PersistenceManager.shared.saveFolderBookmark(pickerURL)
+        pickerURL.stopAccessingSecurityScopedResource()
+        Task {
+            await library.adoptSavedFolder()
         }
     }
 

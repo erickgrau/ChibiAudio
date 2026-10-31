@@ -21,13 +21,13 @@ struct TrackArtVisualizer: View {
     let track: Track
     let size: CGFloat
 
-    @State private var image: UIImage?
+    @State private var image: PlatformImage?
     @State private var usedTrackSidecar = false
 
     var body: some View {
         ZStack {
             if let image {
-                Image(uiImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
@@ -66,7 +66,7 @@ struct TrackArtVisualizer: View {
         usedTrackSidecar = false
         image = nil
         guard let data = ArtworkCache.discoverTrackArtwork(beside: track.url),
-              let ui = UIImage(data: data) else {
+              let ui = PlatformImage(data: data) else {
             return
         }
         image = ui

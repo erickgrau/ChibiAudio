@@ -1,7 +1,6 @@
 import AVFoundation
 import MediaPlayer
 import Observation
-import UIKit
 
 @Observable
 @MainActor
@@ -35,6 +34,8 @@ final class AudioPlayerManager {
     /// existing view code keeps observing the same surface.
     @ObservationIgnored private var queue = PlaybackQueue()
 
+    @ObservationIgnored private let persistence: PersistenceManager
+
     /// AVFoundation/UIKit handles read-and-cleared from `deinit`, which
     /// Swift 6 treats as nonisolated even when the enclosing class is
     /// `@MainActor`. They're only ever written from MainActor methods, but
@@ -64,7 +65,8 @@ final class AudioPlayerManager {
 
     // MARK: - Init
 
-    init() {
+    init(persistence: PersistenceManager = .shared) {
+        self.persistence = persistence
         let storedShuffle = UserDefaults.standard.bool(forKey: "shuffleEnabled")
         let storedMode: RepeatMode = {
             guard let raw = UserDefaults.standard.string(forKey: "repeatMode"),
@@ -75,14 +77,19 @@ final class AudioPlayerManager {
         repeatMode = storedMode
         queue.shuffleEnabled = storedShuffle
         queue.repeatMode = storedMode
+        restoreQueue()
         // Live-source metering (radio / remote streams): the visualizer taps
         // our own AVPlayerItem instead of opening a second network connection.
         VisualizerAudioAnalyzer.shared.liveItemProvider = { [weak self] in
             self?.player?.currentItem
         }
+        #if os(iOS)
         configureAudioSession()
+        #endif
         configureRemoteCommands()
+        #if os(iOS)
         observeAudioSessionEvents()
+        #endif
     }
 
     deinit {
@@ -100,6 +107,10 @@ final class AudioPlayerManager {
 
     // MARK: - Audio Session
 
+    /// macOS has no `AVAudioSession`: playback goes to the system default
+    /// output, follows device changes on its own, and never forces a
+    /// sample rate. Everything in this section is iOS-only.
+    #if os(iOS)
     private func configureAudioSession(trackSampleRate: Double? = nil) {
         let dacMode = UserDefaults.standard.bool(forKey: DACSession.dacModeDefaultsKey)
         let enable = DACSession.shouldEnableDACPath(userEnabled: dacMode)
@@ -125,18 +136,25 @@ final class AudioPlayerManager {
             Log.player.error("Failed to activate audio session: \(error.localizedDescription)")
         }
     }
+    #endif
 
-    /// Call from Settings when Hi-res/DAC mode toggles.
+    /// Call from Settings when Hi-res/DAC mode toggles. No-op on macOS.
     func reloadAudioSessionPreference() {
+        #if os(iOS)
         configureAudioSession()
         if isPlaying {
             activateAudioSession()
         }
+        #endif
     }
 
     /// Latest output route summary for Settings / Now Playing (THX Onyx when USB).
     var audioRouteSummary: String {
+        #if os(iOS)
         DACSession.currentRouteInfo().summary
+        #else
+        "System default output"
+        #endif
     }
 
     /// Apple's interruption and route-change articles observe via
@@ -144,6 +162,7 @@ final class AudioPlayerManager {
     /// `Notification` is not `Sendable` (`object` / `userInfo` may not be),
     /// and that crossing an actor boundary requires `compactMap`/`map` to
     /// extract sendable `userInfo` values first.
+    #if os(iOS)
     private func observeAudioSessionEvents() {
         interruptionTask = Task { [weak self] in
             let events = NotificationCenter.default.notifications(
@@ -196,6 +215,7 @@ final class AudioPlayerManager {
             pause()
         }
     }
+    #endif
 
     // MARK: - Remote Commands
 
@@ -279,10 +299,16 @@ final class AudioPlayerManager {
         apply(action)
     }
 
-    /// Resume playback. Idempotent: never pauses.
+    /// Resume playback. Idempotent: never pauses. After a relaunch there is
+    /// no `AVPlayer` yet, so the restored current track is loaded instead.
     func play() {
-        guard let player else { return }
+        guard let player else {
+            if let track = queue.currentTrack { loadAndPlay(track) }
+            return
+        }
+        #if os(iOS)
         activateAudioSession()
+        #endif
         player.play()
         isPlaying = true
         updateNowPlayingElapsed()
@@ -355,11 +381,57 @@ final class AudioPlayerManager {
         queue.refreshTrackMetadata(using: lookup)
         currentQueue = queue.currentQueue
         currentIndex = queue.currentIndex
+        persistence.saveQueue(queue)
         currentTrack = queue.currentTrack
         if let track = currentTrack {
             duration = track.duration
             updateNowPlayingInfo()
         }
+    }
+
+    // MARK: - Up Next
+
+    var upNext: ArraySlice<Track> {
+        currentQueue.indices.contains(currentIndex) ? currentQueue[(currentIndex + 1)...] : []
+    }
+
+    func playNext(_ tracks: [Track]) {
+        Log.player.info("Play next: \(tracks.count) track(s)")
+        consecutiveLoadFailures = 0
+        let action = queue.playNext(tracks)
+        syncPublishedFromQueue()
+        apply(action)
+    }
+
+    func addToQueue(_ tracks: [Track]) {
+        Log.player.info("Add to queue: \(tracks.count) track(s)")
+        consecutiveLoadFailures = 0
+        let action = queue.addToQueue(tracks)
+        syncPublishedFromQueue()
+        apply(action)
+    }
+
+    func moveUpNext(fromOffsets source: IndexSet, toOffset destination: Int) {
+        queue.moveUpNext(fromOffsets: source, toOffset: destination)
+        syncPublishedFromQueue()
+    }
+
+    func removeUpNext(atOffsets offsets: IndexSet) {
+        queue.removeUpNext(atOffsets: offsets)
+        syncPublishedFromQueue()
+    }
+
+    func clearUpNext() {
+        Log.player.info("Clear Up Next")
+        queue.clearUpNext()
+        syncPublishedFromQueue()
+    }
+
+    func skip(toUpNextOffset offset: Int) {
+        consecutiveLoadFailures = 0
+        let action = queue.skip(toUpNextOffset: offset)
+        syncPublishedFromQueue()
+        apply(action)
     }
 
     // MARK: - Shuffle Toggle
@@ -406,9 +478,25 @@ final class AudioPlayerManager {
         }
     }
 
+    /// Mirrors queue state onto the observed properties and persists it.
+    /// Every queue mutation funnels through here, so this is the save point.
     private func syncPublishedFromQueue() {
         if currentQueue != queue.currentQueue { currentQueue = queue.currentQueue }
         if currentIndex != queue.currentIndex { currentIndex = queue.currentIndex }
+        persistence.saveQueue(queue)
+    }
+
+    /// Show the last session's queue paused on its current track. Shuffle
+    /// and repeat keep their own `UserDefaults` keys, which win.
+    private func restoreQueue() {
+        guard var saved = persistence.loadQueue(), let track = saved.currentTrack else { return }
+        saved.shuffleEnabled = queue.shuffleEnabled
+        saved.repeatMode = queue.repeatMode
+        queue = saved
+        currentQueue = saved.currentQueue
+        currentIndex = saved.currentIndex
+        currentTrack = track
+        duration = track.duration
     }
 
     /// Natural end-of-track. Goes through `queue.next()` so Repeat One
@@ -466,6 +554,7 @@ final class AudioPlayerManager {
             handleLoadFailure()
             return
         case .dsd:
+            #if os(iOS)
             // THX Onyx supports DSD; free v1 prefers DoP but the encoder isn’t shipped yet.
             // Never silently transcode to low-rate MP3/AAC.
             let strategy = DSDRouter.strategy(forFileExtension: track.url.pathExtension)
@@ -478,6 +567,9 @@ final class AudioPlayerManager {
                 return
             }
             Log.player.error("Skipping DSD \(track.url.lastPathComponent) — unavailable")
+            #else
+            Log.player.error("Skipping DSD \(track.url.lastPathComponent) — DoP encoder not in free v1 (macOS)")
+            #endif
             currentTrack = track
             handleLoadFailure()
             return
@@ -490,7 +582,11 @@ final class AudioPlayerManager {
 
         Task { [weak self] in
             await CloudFileAccess.prepareForPlayback(at: track.url)
+            #if os(iOS)
             let probedRate = await DACSession.probeSampleRate(of: track.url)
+            #else
+            let probedRate: Double? = nil
+            #endif
             await MainActor.run {
                 self?.finishLoadAndPlay(track, trackSampleRate: probedRate)
             }
@@ -501,7 +597,9 @@ final class AudioPlayerManager {
         // Another track may have been requested while we waited on cloud I/O.
         guard currentTrack?.id == track.id else { return }
 
+        #if os(iOS)
         activateAudioSession(trackSampleRate: trackSampleRate)
+        #endif
 
         let item: AVPlayerItem
         if MediaSourceKind.infer(from: track.url) == .plex {
@@ -518,7 +616,9 @@ final class AudioPlayerManager {
         // Soft PASS: keep system AirPlay / external routes available.
         // Selecting a USB DAC via the route picker still uses the bit-perfect DAC path.
         player?.allowsExternalPlayback = true
+        #if os(iOS)
         player?.usesExternalPlaybackWhileExternalScreenIsActive = false
+        #endif
 
         // Wait for the item to be ready before playing.
         //
@@ -623,7 +723,7 @@ final class AudioPlayerManager {
             && ArtworkCache.cachedFullImage(for: track.url) == nil
             && ArtworkCache.cachedThumbnail(for: track.url) == nil {
             let url = track.url
-            let scale = UIScreen.main.scale
+            let scale = PlatformDisplay.mainScale
             Task { [weak self] in
                 guard let image = await ArtworkCache.thumbnail(for: url, pointSize: 256, scale: scale)
                 else { return }
