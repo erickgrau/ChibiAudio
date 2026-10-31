@@ -61,7 +61,10 @@ enum ArtworkCache {
     /// Last directory we ensured exists, so `createDirectory` isn't a
     /// syscall on every `fileURL` / `hasArtwork` access. Re-checked when
     /// the DEBUG override changes between tests.
+    /// Guarded by `directoryLock`: the scan's concurrent loaders, decode
+    /// tasks and the main thread all reach `directory` at once.
     nonisolated(unsafe) private static var preparedDirectory: URL?
+    private static let directoryLock = NSLock()
 
     private static var directory: URL {
         let url: URL = {
@@ -72,6 +75,8 @@ enum ArtworkCache {
                 .urls(for: .documentDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent("Artwork", isDirectory: true)
         }()
+        directoryLock.lock()
+        defer { directoryLock.unlock() }
         if preparedDirectory != url {
             try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
             preparedDirectory = url
@@ -82,8 +87,9 @@ enum ArtworkCache {
     /// Disk filename key — path-only SHA. Must stay stable; changing the
     /// hex format would invalidate every cached artwork file.
     static func key(for trackURL: URL) -> String {
-        let path = trackURL.standardized.path
-        let digest = SHA256.hash(data: Data(path.utf8))
+        // File URLs hash the path (unchanged on-disk keys); remote streams
+        // need the query too, or every Subsonic track shares one entry.
+        let digest = SHA256.hash(data: Data(Track.identityKey(for: trackURL).utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 

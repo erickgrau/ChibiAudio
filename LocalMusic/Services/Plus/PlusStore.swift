@@ -25,7 +25,12 @@ final class PlusStore {
 
     init() {
         updatesTask = Task { [weak self] in
-            for await _ in StoreKit.Transaction.updates {
+            for await result in StoreKit.Transaction.updates {
+                // Ask to Buy approvals, renewals, other-device purchases and
+                // offer codes arrive here; unfinished ones redeliver every launch.
+                if case .verified(let transaction) = result {
+                    await transaction.finish()
+                }
                 await self?.refreshEntitlements()
             }
         }
@@ -108,13 +113,17 @@ final class PlusStore {
         }
     }
 
+    /// Returns `nil` when the user dismissed the Apple ID prompt.
     @discardableResult
-    func restore() async -> Bool {
+    func restore() async -> Bool? {
         do {
             try await AppStore.sync()
             await refreshEntitlements()
             lastError = nil
             return isPlusActive
+        } catch StoreKitError.userCancelled {
+            // Dismissing the Apple ID prompt is not an error.
+            return nil
         } catch {
             lastError = error.localizedDescription
             Log.ui.error("Plus restore failed: \(error.localizedDescription)")

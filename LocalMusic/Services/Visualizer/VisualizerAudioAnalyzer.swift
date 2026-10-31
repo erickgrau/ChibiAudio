@@ -335,6 +335,11 @@ final class VisualizerAudioAnalyzer {
         )
         guard status == noErr, let tap else {
             Log.player.debug("Visualizer tap create failed: \(status)")
+            // No tap means `finalize` never runs; balance passRetained here.
+            if status != noErr, let clientInfo = callbacks.clientInfo {
+                Unmanaged<TapBridge>.fromOpaque(clientInfo).release()
+            }
+            if tapBridge === bridge { tapBridge = nil }
             return
         }
 

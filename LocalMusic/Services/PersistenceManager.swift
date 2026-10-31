@@ -56,7 +56,11 @@ final class PersistenceManager: @unchecked Sendable {
                 bookmarkDataIsStale: &isStale
             )
             if isStale {
+                // Re-creating a security-scoped bookmark fails on iOS unless
+                // the scope is open, which would keep the stale data forever.
+                let didStart = url.startAccessingSecurityScopedResource()
                 saveFolderBookmark(url)
+                if didStart { url.stopAccessingSecurityScopedResource() }
             }
             return url
         } catch {

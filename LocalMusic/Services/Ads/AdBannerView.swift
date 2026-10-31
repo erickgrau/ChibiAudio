@@ -19,10 +19,12 @@ struct AdBannerView: View {
     @ViewBuilder
     private var bannerContent: some View {
 #if canImport(GoogleMobileAds)
-        GoogleAdBannerRepresentable()
-            .frame(height: 50)
-            .frame(maxWidth: .infinity)
-            .background(ChibiTheme.canvasElevated)
+        if let unitID = GoogleAdBannerRepresentable.adUnitID {
+            GoogleAdBannerRepresentable(adUnitID: unitID)
+                .frame(height: 50)
+                .frame(maxWidth: .infinity)
+                .background(ChibiTheme.canvasElevated)
+        }
 #else
         // SDK not linked — still respect the “configured” path with a reserved
         // slot so layout can be verified without pulling AdMob into CI.
@@ -75,10 +77,24 @@ import GoogleMobileAds
 import UIKit
 
 private struct GoogleAdBannerRepresentable: UIViewRepresentable {
+    let adUnitID: String
+
+    /// Info.plist `GADBannerAdUnitID`. Google's sample unit is Debug-only so a
+    /// release build without a real unit shows no banner instead of test ads.
+    static var adUnitID: String? {
+        let configured = (Bundle.main.object(forInfoDictionaryKey: "GADBannerAdUnitID") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !configured.isEmpty { return configured }
+#if DEBUG
+        return "ca-app-pub-3940256099942544/2934735716" // Google sample banner
+#else
+        return nil
+#endif
+    }
+
     func makeUIView(context: Context) -> BannerView {
         let banner = BannerView(adSize: AdSizeBanner)
-        banner.adUnitID = Bundle.main.object(forInfoDictionaryKey: "GADBannerAdUnitID") as? String
-            ?? "ca-app-pub-3940256099942544/2934735716" // Google sample banner
+        banner.adUnitID = adUnitID
         banner.rootViewController = UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }
             .first
