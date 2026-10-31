@@ -69,9 +69,8 @@ struct AddToPlaylistSheet: View {
                 }
             }
             .navigationTitle("Add to Playlist")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiInlineNavTitle()
+            .chibiNavChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

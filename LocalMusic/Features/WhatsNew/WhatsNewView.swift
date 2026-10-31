@@ -36,9 +36,8 @@ struct WhatsNewView: View {
             }
             .chibiListChrome()
             .navigationTitle("What's New")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiInlineNavTitle()
+            .chibiNavChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {

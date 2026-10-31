@@ -40,16 +40,18 @@ struct PlaylistDetailView: View {
         }
         .navigationTitle(playlist.name)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: PlatformToolbar.trailing) {
                 Button {
                     showAddTracks = true
                 } label: {
                     Label("Add Tracks", systemImage: "plus")
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
+            #if os(iOS)
+            ToolbarItem(placement: PlatformToolbar.trailing) {
                 EditButton()
             }
+            #endif
         }
         .sheet(isPresented: $showAddTracks) {
             AddTracksSheet(playlist: $playlist)
@@ -153,7 +155,7 @@ struct PlaylistDetailView: View {
             }
         }
         .listStyle(.plain)
-        .listSectionSpacing(.compact)
+        .chibiCompactSectionSpacing()
         .environment(\.defaultMinListRowHeight, 0)
         .contentMargins(.bottom, 80, for: .scrollContent)
     }
@@ -363,9 +365,9 @@ struct AddTracksSheet: View {
                 }
             }
             .navigationTitle("Add Tracks")
-            .navigationBarTitleDisplayMode(.inline)
+            .chibiInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: PlatformToolbar.leading) {
                     Button("Done") {
                         commitIfNeeded()
                         dismiss()

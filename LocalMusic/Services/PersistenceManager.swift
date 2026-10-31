@@ -36,10 +36,22 @@ final class PersistenceManager: @unchecked Sendable {
 
     // MARK: - Folder Bookmark
 
+    /// macOS sandbox folders only survive relaunch as security-scoped
+    /// bookmarks; iOS document-picker access persists with a plain bookmark.
+    private enum BookmarkOptions {
+        #if os(macOS)
+        static let creation: URL.BookmarkCreationOptions = .withSecurityScope
+        static let resolution: URL.BookmarkResolutionOptions = .withSecurityScope
+        #else
+        static let creation: URL.BookmarkCreationOptions = []
+        static let resolution: URL.BookmarkResolutionOptions = []
+        #endif
+    }
+
     func saveFolderBookmark(_ url: URL) {
         do {
             let bookmarkData = try url.bookmarkData(
-                options: [],
+                options: BookmarkOptions.creation,
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )
@@ -55,7 +67,7 @@ final class PersistenceManager: @unchecked Sendable {
         do {
             let url = try URL(
                 resolvingBookmarkData: data,
-                options: [],
+                options: BookmarkOptions.resolution,
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             )

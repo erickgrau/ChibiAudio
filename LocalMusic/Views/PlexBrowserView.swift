@@ -28,8 +28,7 @@ struct PlexBrowserView: View {
         }
         .navigationTitle("Plex")
         .chibiCanvas()
-        .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .chibiNavChrome()
         .tint(ChibiTheme.amber)
         .sheet(isPresented: $showSignIn) {
             PlexSignInView()
@@ -203,7 +202,7 @@ struct PlexAlbumDetailView: View {
         }
         .chibiListChrome()
         .navigationTitle(album.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .chibiInlineNavTitle()
         .sheet(item: $addPayload) { payload in
             AddToPlaylistSheet(payload: payload)
         }
@@ -248,13 +247,13 @@ struct PlexAlbumDetailView: View {
 
 struct PlexThumbView: View {
     let thumb: String?
-    @State private var image: UIImage?
+    @State private var image: PlatformImage?
 
     var body: some View {
         ZStack {
             ChibiTheme.canvasElevated
             if let image {
-                Image(uiImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
@@ -273,7 +272,7 @@ struct PlexThumbView: View {
             request.setValue(v, forHTTPHeaderField: k)
         }
         if let (data, _) = try? await URLSession.shared.data(for: request),
-           let ui = UIImage(data: data) {
+           let ui = PlatformImage(data: data) {
             image = ui
         }
     }

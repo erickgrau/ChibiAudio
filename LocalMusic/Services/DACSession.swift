@@ -1,3 +1,4 @@
+#if os(iOS)
 import AVFoundation
 
 /// Hi-res / USB-DAC session helpers tuned for Erick’s reference device:
@@ -170,3 +171,4 @@ enum DSDRouter {
 
     static var dopImplementedInFreeV1: Bool { false }
 }
+#endif

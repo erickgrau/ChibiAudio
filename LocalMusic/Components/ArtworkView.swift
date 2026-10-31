@@ -10,12 +10,12 @@ struct ArtworkView: View {
     var placeholderIcon: String = "music.note"
 
     @Environment(\.displayScale) private var displayScale
-    @State private var image: UIImage?
+    @State private var image: PlatformImage?
 
     var body: some View {
         Group {
             if let image {
-                Image(uiImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {

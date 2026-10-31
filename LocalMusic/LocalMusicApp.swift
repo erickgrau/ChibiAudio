@@ -15,7 +15,9 @@ struct LocalMusicApp: App {
         Log.ui.info("App launched")
         let enabled = UserDefaults.standard.bool(forKey: "crashReportingEnabled")
         CrashDiagnosticsService.shared.setEnabled(enabled)
+        #if os(iOS)
         AdMobConfig.configureIfNeeded()
+        #endif
     }
 
     var body: some Scene {
@@ -59,8 +61,10 @@ struct LocalMusicApp: App {
                     .tag(ChibiTab.radio)
             }
             .tint(ChibiTheme.amber)
+            #if os(iOS)
             .toolbarBackground(ChibiTheme.softGlass, for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar)
+            #endif
             .chibiCanvas()
             .environment(player)
             .environment(library)
@@ -128,5 +132,32 @@ private struct MiniPlayerModifier: ViewModifier {
 extension View {
     func miniPlayer(onTap: @escaping () -> Void) -> some View {
         modifier(MiniPlayerModifier(onTap: onTap))
+    }
+
+    /// Mini player with the optional free-tier ad banner above it (not for
+    /// Now Playing). The Mac target has no ads, so it is the plain mini player there.
+    func adAwareMiniPlayer(onTap: @escaping () -> Void) -> some View {
+        modifier(AdAwareMiniPlayerModifier(onTap: onTap))
+    }
+}
+
+private struct AdAwareMiniPlayerModifier: ViewModifier {
+    @Environment(AudioPlayerManager.self) private var player
+    @Environment(PlusStore.self) private var plus
+    let onTap: () -> Void
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                #if os(iOS)
+                if AdMobConfig.shouldShowBanner(isPlusActive: plus.isPlusActive) {
+                    AdBannerView()
+                }
+                #endif
+                if player.currentTrack != nil {
+                    MiniPlayerView(onTap: onTap)
+                }
+            }
+        }
     }
 }

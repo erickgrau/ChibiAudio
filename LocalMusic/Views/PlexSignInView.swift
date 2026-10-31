@@ -30,7 +30,7 @@ struct PlexSignInView: View {
             }
             .chibiCanvas()
             .navigationTitle("Plex")
-            .navigationBarTitleDisplayMode(.inline)
+            .chibiInlineNavTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
@@ -127,9 +127,11 @@ struct PlexSignInView: View {
 
             if showAdvanced {
                 TextField("Server address", text: $advancedURL)
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
                     .keyboardType(.URL)
+                    #endif
+                    .autocorrectionDisabled()
                 Button("Use this address") {
                     client.setAdvancedServerURL(advancedURL)
                     Task {
@@ -186,9 +188,13 @@ final class PlexAuthPresenter: NSObject, ASWebAuthenticationPresentationContextP
     var hasActiveSession: Bool { session != nil }
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        #if os(iOS)
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)
             .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+        #else
+        NSApp.keyWindow ?? ASPresentationAnchor()
+        #endif
     }
 }

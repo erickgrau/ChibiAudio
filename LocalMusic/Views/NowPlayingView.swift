@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct NowPlayingView: View {
     @Environment(AudioPlayerManager.self) private var player
@@ -9,7 +8,7 @@ struct NowPlayingView: View {
     @State private var showUpNext = false
     @State private var lyrics: TrackLyrics?
     @State private var lyricsTrackID: UUID?
-    @State private var artworkColor: UIColor = .systemGray
+    @State private var artworkColor: PlatformColor = .systemGray
     @State private var artworkColorTrackID: UUID?
     @State private var isSeeking = false
     @State private var seekTarget = 0.0
@@ -28,12 +27,11 @@ struct NowPlayingView: View {
                 }
             }
             .navigationTitle("Now Playing")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiInlineNavTitle()
+            .chibiNavChrome()
             .toolbar {
                 if player.currentTrack != nil {
-                    ToolbarItemGroup(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: PlatformToolbar.trailing) {
                         Button {
                             showLyrics = true
                         } label: {
@@ -109,6 +107,7 @@ struct NowPlayingView: View {
         isSeeking ? seekTarget : player.currentTime
     }
 
+    #if os(iOS)
     private var routeInfo: DACSession.RouteInfo {
         DACSession.currentRouteInfo()
     }
@@ -116,6 +115,7 @@ struct NowPlayingView: View {
     private var showBitPerfectPill: Bool {
         DACSession.isDACModeEnabled && routeInfo.isUSBAudio
     }
+    #endif
 
     private func nowPlayingContent(track: Track) -> some View {
         let color = Color(artworkColor)
@@ -229,15 +229,19 @@ struct NowPlayingView: View {
 
             HStack(spacing: 8) {
                 SourceChip(kind: source)
+                #if os(iOS)
                 SampleRateChip(sampleRateHz: max(routeInfo.currentSampleRate, 44_100))
+                #endif
             }
 
+            #if os(iOS)
             if showBitPerfectPill {
                 BitPerfectOnyxPill()
                     .padding(.top, 2)
             } else {
                 DACRouteIndicator(summary: routeInfo.summary, isUSB: routeInfo.isUSBAudio)
             }
+            #endif
         }
     }
 
@@ -279,9 +283,11 @@ struct NowPlayingView: View {
                 }
 
                 // AirPlay Soft PASS — system route picker; USB DAC stays bit-perfect when selected.
+                #if os(iOS)
                 RoutePickerButton()
                     .frame(width: 40, height: 40)
                     .accessibilityLabel("Audio Output")
+                #endif
 
                 Button { player.cycleRepeatMode() } label: {
                     Image(systemName: repeatIcon)
@@ -396,7 +402,7 @@ struct NowPlayingView: View {
                let cached = ArtworkColorCache.color(for: track.url) {
                 artworkColor = cached
             } else if artAvailable {
-                let scale = UIScreen.main.scale
+                let scale = PlatformDisplay.mainScale
                 let image = await ArtworkCache.thumbnail(for: track.url,
                                                           pointSize: 80,
                                                           scale: scale)
@@ -454,9 +460,8 @@ struct LyricsSheet: View {
                 .background(ChibiTheme.softGlass)
             }
             .navigationTitle("Lyrics")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiInlineNavTitle()
+            .chibiNavChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -576,37 +581,38 @@ struct SyncedLyricsView: View {
 
 // MARK: - Dominant Color Cache
 
-/// Caches the result of `UIImage.dominantColor` per track URL so we don't
+/// Caches the result of `PlatformImage.dominantColor` per track URL so we don't
 /// re-run the (50–150 ms) CIAreaAverage filter on every Now Playing render.
 enum ArtworkColorCache {
     /// `nonisolated(unsafe)` because `NSCache` is internally thread-safe but
-    /// not `Sendable`-marked in the iOS SDK.
-    nonisolated(unsafe) private static let storage: NSCache<NSString, UIColor> = {
-        let cache = NSCache<NSString, UIColor>()
+    /// not `Sendable`-marked in the platform SDK.
+    nonisolated(unsafe) private static let storage: NSCache<NSString, PlatformColor> = {
+        let cache = NSCache<NSString, PlatformColor>()
         cache.countLimit = 64
         return cache
     }()
 
-    static func color(for trackURL: URL) -> UIColor? {
+    static func color(for trackURL: URL) -> PlatformColor? {
         storage.object(forKey: ArtworkCache.key(for: trackURL) as NSString)
     }
 
-    static func set(_ color: UIColor, for trackURL: URL) {
+    static func set(_ color: PlatformColor, for trackURL: URL) {
         storage.setObject(color, forKey: ArtworkCache.key(for: trackURL) as NSString)
     }
 }
 
 // MARK: - Dominant Color Extraction
 
-extension UIImage {
+extension PlatformImage {
     /// Reused across dominant-color extractions. Creating a `CIContext` is
     /// the expensive part; the 1×1 CIAreaAverage render is cheap by comparison.
     private static let dominantColorContext: CIContext = {
         CIContext(options: [.workingColorSpace: kCFNull as Any])
     }()
 
-    nonisolated var dominantColor: UIColor? {
-        guard let ciImage = CIImage(image: self) else { return nil }
+    nonisolated var dominantColor: PlatformColor? {
+        guard let cg = platformCGImage else { return nil }
+        let ciImage = CIImage(cgImage: cg)
         let extent = ciImage.extent
         let extentVector = CIVector(x: extent.origin.x, y: extent.origin.y,
                                      z: extent.size.width, w: extent.size.height)
@@ -616,14 +622,14 @@ extension UIImage {
               let output = filter.outputImage else { return nil }
 
         var bitmap = [UInt8](repeating: 0, count: 4)
-        let context = UIImage.dominantColorContext
+        let context = PlatformImage.dominantColorContext
         context.render(output, toBitmap: &bitmap, rowBytes: 4,
                        bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
                        format: .RGBA8, colorSpace: nil)
 
-        return UIColor(red: CGFloat(bitmap[0]) / 255,
-                       green: CGFloat(bitmap[1]) / 255,
-                       blue: CGFloat(bitmap[2]) / 255,
-                       alpha: 1)
+        return PlatformColor(red: CGFloat(bitmap[0]) / 255,
+                             green: CGFloat(bitmap[1]) / 255,
+                             blue: CGFloat(bitmap[2]) / 255,
+                             alpha: 1)
     }
 }

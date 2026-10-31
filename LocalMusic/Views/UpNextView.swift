@@ -47,9 +47,7 @@ struct UpNextView: View {
             .listStyle(.plain)
             .chibiListChrome()
             .navigationTitle("Up Next")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
+            .chibiInlineNavTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

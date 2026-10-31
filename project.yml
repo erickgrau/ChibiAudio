@@ -14,6 +14,7 @@ options:
   bundleIdPrefix: com.chibitek
   deploymentTarget:
     iOS: "18.0"
+    macOS: "15.0"
   xcodeVersion: "16.0"
 
 settings:
@@ -30,6 +31,7 @@ targets:
       - path: LocalMusic
         excludes:
           - "**/*.storekit"
+          - "**/*.entitlements"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chibitek.ChibiAudio
@@ -88,6 +90,58 @@ targets:
         BUNDLE_LOADER: $(TEST_HOST)
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/LocalMusic.app/LocalMusic
 
+  # Native Mac app sharing the LocalMusic sources (module name kept as
+  # LocalMusic so `@testable import LocalMusic` works on both platforms).
+  # AdMob stays out entirely; folder access is the sandboxed user-selected
+  # bookmark (read-only entitlement, matching the iOS document picker).
+  ChibiAudio:
+    type: application
+    platform: macOS
+    sources:
+      - path: LocalMusic
+        excludes:
+          - "**/*.storekit"
+          - "**/*.entitlements"
+          - "Services/Ads/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chibitek.ChibiAudio.mac
+        PRODUCT_NAME: ChibiAudio
+        PRODUCT_MODULE_NAME: LocalMusic
+        MARKETING_VERSION: "1.2.2"
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: LocalMusic/Configuration/ChibiAudioMac.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: LocalMusic/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: ChibiAudio
+        INFOPLIST_KEY_CFBundleName: ChibiAudio
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        ENABLE_PREVIEWS: YES
+    postBuildScripts:
+      - name: Set Build Number from Git
+        basedOnDependencyAnalysis: false
+        inputFiles:
+          - $(SRCROOT)/.git/HEAD
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/build-number.stamp
+        script: |
+          set -euo pipefail
+          export PATH="/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+          BUILD=$(/usr/bin/git -C "$SRCROOT" rev-list --count HEAD)
+          if [ -z "$BUILD" ]; then
+            echo "error: git rev-list --count HEAD returned empty" >&2
+            exit 1
+          fi
+          PLIST="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$PLIST"
+          mkdir -p "$DERIVED_FILE_DIR"
+          echo "$BUILD" > "$DERIVED_FILE_DIR/build-number.stamp"
+          echo "note: set CFBundleVersion=$BUILD in $PLIST"
+
 schemes:
   LocalMusic:
     build:
@@ -99,3 +153,8 @@ schemes:
         - LocalMusicTests
     run:
       storeKitConfiguration: LocalMusic/Configuration/ChibiAudio.storekit
+
+  ChibiAudio:
+    build:
+      targets:
+        ChibiAudio: all

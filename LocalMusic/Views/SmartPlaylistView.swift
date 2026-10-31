@@ -37,9 +37,8 @@ struct SmartPlaylistView: View {
             }
             .chibiListChrome()
             .navigationTitle("Make a Playlist")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiInlineNavTitle()
+            .chibiNavChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -340,9 +339,8 @@ private struct SeedPickerSheet: View {
             }
             .searchable(text: $query, prompt: mode == .songs ? "Search songs" : "Search artists")
             .navigationTitle("Add a seed")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .chibiInlineNavTitle()
+            .chibiNavChrome()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

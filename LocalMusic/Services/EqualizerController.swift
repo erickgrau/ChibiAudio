@@ -53,9 +53,14 @@ final class EqualizerController {
         didSet { UserDefaults.standard.set(activePresetID, forKey: Self.presetKey) }
     }
 
-    /// True when DAC / bit-perfect mode forbids EQ.
+    /// True when DAC / bit-perfect mode forbids EQ. The Mac target has no
+    /// DAC session path, so EQ is never forced off there.
     var isForcedOffForBitPerfect: Bool {
+        #if os(iOS)
         DACSession.prefersBitPerfectPath
+        #else
+        false
+        #endif
     }
 
     /// Effective: user wants EQ **and** bit-perfect path is not forcing it off.

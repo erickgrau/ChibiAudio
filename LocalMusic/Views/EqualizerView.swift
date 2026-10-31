@@ -82,8 +82,7 @@ struct EqualizerView: View {
         }
         .navigationTitle("Equalizer")
         .chibiListChrome()
-        .toolbarBackground(ChibiTheme.softGlass, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .chibiNavChrome()
     }
 
     private func freqLabel(_ freq: Float) -> String {
