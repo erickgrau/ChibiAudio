@@ -47,7 +47,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showSettings) {
+            .chibiSheet(isPresented: $showSettings, size: .regular) {
                 SettingsView()
             }
             .searchable(text: $searchDraft, prompt: "Search by title, artist, or album")
@@ -124,7 +124,7 @@ struct LibraryView: View {
             Spacer()
         }
         #if os(iOS)
-        .sheet(isPresented: $showFolderPicker) {
+        .chibiSheet(isPresented: $showFolderPicker) {
             DocumentPicker { pickerURL in
                 adoptFolder(pickerURL)
             }
@@ -301,7 +301,7 @@ private struct TrackRowButton: View {
             }
         }
         .queueSwipeActions(for: track)
-        .sheet(isPresented: $showAddToPlaylist) {
+        .chibiSheet(isPresented: $showAddToPlaylist, size: .compact) {
             AddToPlaylistSheet(payload: .local(track))
         }
         .alert("Rename Track", isPresented: $showRename) {

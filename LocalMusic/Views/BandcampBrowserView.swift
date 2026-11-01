@@ -95,7 +95,7 @@ struct BandcampBrowserView: View {
         .chibiListChrome()
         .chibiNavChrome()
         .tint(ChibiTheme.amber)
-        .sheet(item: $addPayload) { payload in
+        .chibiSheet(item: $addPayload, size: .compact) { payload in
             AddToPlaylistSheet(payload: payload)
         }
         .task {

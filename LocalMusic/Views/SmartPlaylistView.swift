@@ -45,7 +45,7 @@ struct SmartPlaylistView: View {
                 }
             }
             .tint(ChibiTheme.amber)
-            .sheet(isPresented: $showSeedPicker) {
+            .chibiSheet(isPresented: $showSeedPicker, size: .regular) {
                 SeedPickerSheet(seeds: $seeds)
             }
             .alert("Save Playlist", isPresented: $showSaveAlert) {

@@ -29,7 +29,7 @@ struct LocalMusicApp: App {
             .environment(recents)
             .environment(tabs)
             .environment(plus)
-            .sheet(isPresented: $showWhatsNew, onDismiss: { WhatsNew.markSeen() }) {
+            .chibiSheet(isPresented: $showWhatsNew, size: .large, onDismiss: { WhatsNew.markSeen() }) {
                 WhatsNewView(releases: Array(WhatsNew.unseen.prefix(1))) {
                     showWhatsNew = false
                 }

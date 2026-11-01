@@ -81,7 +81,7 @@ struct RadioView: View {
             } message: {
                 Text("Paste any free Icecast / Shoutcast http(s) stream URL.")
             }
-            .sheet(item: $addPayload) { payload in
+            .chibiSheet(item: $addPayload, size: .compact) { payload in
                 AddToPlaylistSheet(payload: payload)
             }
             .navigationDestination(isPresented: $showingStations) {

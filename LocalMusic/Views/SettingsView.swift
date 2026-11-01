@@ -351,16 +351,16 @@ struct SettingsView: View {
                 }
             }
             #if os(iOS)
-            .sheet(isPresented: $showFolderPicker) {
+            .chibiSheet(isPresented: $showFolderPicker) {
                 DocumentPicker { pickerURL in
                     adoptFolder(pickerURL)
                 }
             }
             #endif
-            .sheet(isPresented: $showPaywall) {
+            .chibiSheet(isPresented: $showPaywall, size: .large) {
                 PaywallView()
             }
-            .sheet(isPresented: $showWhatsNew) {
+            .chibiSheet(isPresented: $showWhatsNew, size: .large) {
                 WhatsNewView(releases: WhatsNew.all, showsArchive: true) {
                     showWhatsNew = false
                 }
@@ -376,7 +376,7 @@ struct SettingsView: View {
                 bandcampUser = BandcampSubsonicClient.shared.username
                 bandcampPassword = BandcampSubsonicClient.shared.password
             }
-            .sheet(isPresented: $showPlexSignIn) {
+            .chibiSheet(isPresented: $showPlexSignIn, size: .compact) {
                 PlexSignInView()
             }
             .confirmationDialog("Disconnect Plex from ChibiAudio? This device forgets the sign-in.", isPresented: $confirmPlexSignOut, titleVisibility: .visible) {

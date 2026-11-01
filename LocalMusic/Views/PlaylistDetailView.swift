@@ -53,7 +53,7 @@ struct PlaylistDetailView: View {
             }
             #endif
         }
-        .sheet(isPresented: $showAddTracks) {
+        .chibiSheet(isPresented: $showAddTracks, size: .regular) {
             AddTracksSheet(playlist: $playlist)
         }
         .onAppear { rebuildCaches() }

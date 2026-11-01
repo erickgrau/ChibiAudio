@@ -59,7 +59,7 @@ struct NowPlayingView: View {
                 showLyrics = false
             }
         }
-        .sheet(isPresented: $showLyrics) {
+        .chibiSheet(isPresented: $showLyrics, size: .large) {
             if let track = player.currentTrack {
                 LyricsSheet(
                     track: track,
@@ -67,12 +67,12 @@ struct NowPlayingView: View {
                 )
             }
         }
-        .sheet(isPresented: $showAddToPlaylist) {
+        .chibiSheet(isPresented: $showAddToPlaylist, size: .compact) {
             if let track = player.currentTrack {
                 AddToPlaylistSheet(payload: .local(track))
             }
         }
-        .sheet(isPresented: $showUpNext) {
+        .chibiSheet(isPresented: $showUpNext, size: .regular) {
             UpNextView()
         }
         .chibiCanvas()

@@ -117,3 +117,93 @@ extension View {
         #endif
     }
 }
+// MARK: - Sheets
+
+/// How much room a sheet's content needs on the Mac.
+///
+/// macOS sizes a sheet window to its content's ideal size. A
+/// `NavigationStack` around a `List`, `Form` or `ScrollView` has almost no
+/// ideal height, so without an explicit frame the sheet collapses to the
+/// toolbar (the 470 x 113 Settings and Up Next sheets). iOS presents sheets
+/// at the system detent sizes, so these values only apply to the Mac.
+enum ChibiSheetSize {
+    /// Short pickers and sign-in flows.
+    case compact
+    /// Lists and forms.
+    case regular
+    /// Long-form reading: lyrics, release notes, the paywall.
+    case large
+
+    var minWidth: CGFloat {
+        switch self {
+        case .compact: 420
+        case .regular: 520
+        case .large: 560
+        }
+    }
+
+    var idealWidth: CGFloat {
+        switch self {
+        case .compact: 460
+        case .regular: 600
+        case .large: 680
+        }
+    }
+
+    /// Kept under the 600 pt minimum window height (less the title bar),
+    /// so a sheet never hangs off a minimum-size window.
+    var minHeight: CGFloat {
+        switch self {
+        case .compact: 360
+        case .regular, .large: 420
+        }
+    }
+
+    var idealHeight: CGFloat {
+        switch self {
+        case .compact: 440
+        case .regular, .large: 520
+        }
+    }
+}
+
+extension View {
+    /// Gives sheet content a usable, resizable size on the Mac. No-op on iOS.
+    @ViewBuilder
+    func chibiSheetFrame(_ size: ChibiSheetSize = .regular) -> some View {
+        #if os(macOS)
+        self.frame(
+            minWidth: size.minWidth, idealWidth: size.idealWidth, maxWidth: 1_200,
+            minHeight: size.minHeight, idealHeight: size.idealHeight, maxHeight: 1_000
+        )
+        #else
+        self
+        #endif
+    }
+
+    /// `.sheet(isPresented:)` with Mac content sizing. Every sheet in the
+    /// app goes through this (or the `item:` variant) so no caller can
+    /// regress to a collapsed Mac sheet.
+    func chibiSheet<Content: View>(
+        isPresented: Binding<Bool>,
+        size: ChibiSheetSize = .regular,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        sheet(isPresented: isPresented, onDismiss: onDismiss) {
+            content().chibiSheetFrame(size)
+        }
+    }
+
+    /// `.sheet(item:)` with Mac content sizing.
+    func chibiSheet<Item: Identifiable, Content: View>(
+        item: Binding<Item?>,
+        size: ChibiSheetSize = .regular,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping (Item) -> Content
+    ) -> some View {
+        sheet(item: item, onDismiss: onDismiss) { value in
+            content(value).chibiSheetFrame(size)
+        }
+    }
+}

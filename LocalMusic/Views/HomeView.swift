@@ -68,14 +68,14 @@ struct HomeView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showSettings) {
+            .chibiSheet(isPresented: $showSettings, size: .regular) {
                 SettingsView()
             }
-            .sheet(isPresented: $showPlexSignIn) {
+            .chibiSheet(isPresented: $showPlexSignIn, size: .compact) {
                 PlexSignInView()
             }
             #if os(iOS)
-            .sheet(isPresented: $showFolderPicker) {
+            .chibiSheet(isPresented: $showFolderPicker) {
                 DocumentPicker { pickerURL in
                     adoptFolder(pickerURL)
                 }
