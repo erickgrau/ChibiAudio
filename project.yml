@@ -142,6 +142,23 @@ targets:
           echo "$BUILD" > "$DERIVED_FILE_DIR/build-number.stamp"
           echo "note: set CFBundleVersion=$BUILD in $PLIST"
 
+  # Mac-hosted UI regression tests (sheet sizing, key routing). Not part of
+  # CI. The test host skips library bootstrap under XCTest and the tests use
+  # temporary persistence, so the user's library and queue are untouched.
+  ChibiAudioMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - ChibiAudioMacTests
+    dependencies:
+      - target: ChibiAudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chibitek.ChibiAudio.mac.tests
+        GENERATE_INFOPLIST_FILE: YES
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/ChibiAudio.app/Contents/MacOS/ChibiAudio
+
 schemes:
   LocalMusic:
     build:
@@ -158,3 +175,7 @@ schemes:
     build:
       targets:
         ChibiAudio: all
+        ChibiAudioMacTests: [test]
+    test:
+      targets:
+        - ChibiAudioMacTests

@@ -45,6 +45,11 @@ struct LocalMusicApp: App {
                 }
             }
             .task {
+                #if os(macOS)
+                // Mac UI tests host the app; never scan or restore the
+                // user's library, or show release notes, under XCTest.
+                if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
+                #endif
                 await library.bootstrap()
                 if let url = library.folderURL {
                     player.startAccessingFolder(url)
