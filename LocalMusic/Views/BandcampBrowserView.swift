@@ -16,6 +16,11 @@ struct BandcampBrowserView: View {
                         .font(.footnote)
                         .foregroundStyle(ChibiTheme.textSecondary)
                     SourceChip(kind: .bandcamp)
+                    #if os(macOS)
+                    SettingsLink {
+                        Label("Open Settings", systemImage: "gear")
+                    }
+                    #endif
                 }
             } else {
                 Section {

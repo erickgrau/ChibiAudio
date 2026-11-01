@@ -1,5 +1,33 @@
 import SwiftUI
 
+/// Settings groups. iOS shows every pane in one list; the Mac Settings
+/// window shows one pane per tab.
+enum SettingsPane: String, CaseIterable, Identifiable, Sendable {
+    case general, sources, playback, plus, diagnostics
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: "General"
+        case .sources: "Sources"
+        case .playback: "Playback"
+        case .plus: "Plus"
+        case .diagnostics: "Diagnostics"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .general: "gearshape"
+        case .sources: "externaldrive.connected.to.line.below"
+        case .playback: "hifispeaker"
+        case .plus: "sparkles"
+        case .diagnostics: "stethoscope"
+        }
+    }
+}
+
 struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(AudioPlayerManager.self) private var player
@@ -34,320 +62,33 @@ struct SettingsView: View {
     @State private var bandcampUser = BandcampSubsonicClient.shared.username
     @State private var bandcampPassword = BandcampSubsonicClient.shared.password
     private let crashService = CrashDiagnosticsService.shared
+    #if os(macOS)
+    @Environment(TabRouter.self) private var tabs
+    @State private var macOutput = MacAudioOutput.shared
+    #endif
+
+    private let panes: Set<SettingsPane>
+    /// Hosted in the Mac Settings window, which has its own close button.
+    private let isSettingsWindow: Bool
+
+    init(panes: Set<SettingsPane> = Set(SettingsPane.allCases), isSettingsWindow: Bool = false) {
+        self.panes = panes
+        self.isSettingsWindow = isSettingsWindow
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    if plus.isPlusActive {
-                        Label("ChibiAudio Plus is active", systemImage: "checkmark.seal.fill")
-                            .foregroundStyle(ChibiTheme.teal)
-                        Button("Manage Plus") { showPaywall = true }
-                    } else {
-                        Button {
-                            showPaywall = true
-                        } label: {
-                            Label("Upgrade to Plus — \(plus.displayPrice)/mo", systemImage: "sparkles")
-                        }
-                        Button("Restore Purchases") {
-                            Task { _ = await plus.restore() }
-                        }
-                    }
-                } header: {
-                    Text("ChibiAudio Plus")
-                } footer: {
-                    Text("Plus removes ads and unlocks all visualizer modes, plus CarPlay and Watch stubs. Local files, Plex, Radio Browser, and album/track art stay free.")
-                }
-
-                Section {
-                    Button {
-                        #if os(iOS)
-                        showFolderPicker = true
-                        #else
-                        DocumentPicker.pickFolder { adoptFolder($0) }
-                        #endif
-                    } label: {
-                        LabeledContent {
-                            Text(library.folderURL?.lastPathComponent ?? "Not selected")
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label("Folder", systemImage: "folder")
-                        }
-                    }
-                    .tint(.primary)
-
-                    Button {
-                        Task { await library.rescan() }
-                    } label: {
-                        Label("Reload Music", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(library.folderURL == nil || library.isScanning)
-
-                    if let lastSynced = library.lastSynced {
-                        LabeledContent("Last Synced", value: lastSynced, format: .dateTime)
-                    }
-
-                    if library.isScanning {
-                        if let progress = library.scanProgress, progress.total > 0 {
-                            VStack(alignment: .leading, spacing: 4) {
-                                ProgressView(value: Double(progress.completed),
-                                             total: Double(max(progress.total, 1)))
-                                Text("Scanning \(progress.completed) of \(progress.total)…")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
-                        } else {
-                            HStack {
-                                ProgressView()
-                                Text("Scanning folder…")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Music Folder")
-                } footer: {
-                    #if os(iOS)
-                    Text("Pick On My iPhone, app Documents, iCloud Drive, or Google Drive (install the Drive app and enable it under Files). Bookmarks persist; cloud files download-to-play when the provider supports it.")
-                    #else
-                    Text("Pick your music folder. Access survives relaunches via a security-scoped bookmark (read-only, like the iOS picker).")
-                    #endif
-                }
-
-                Section {
-                    #if os(iOS)
-                    Toggle("Hi-res / DAC mode", isOn: $dacModeEnabled)
-                        .tint(ChibiTheme.teal)
-                    DACRouteIndicator(
-                        summary: player.audioRouteSummary,
-                        isUSB: DACSession.currentRouteInfo().isUSBAudio
-                    )
-                    if dacModeEnabled && DACSession.currentRouteInfo().isUSBAudio {
-                        BitPerfectOnyxPill()
-                            .listRowBackground(Color.clear)
-                    }
-                    SampleRateChip(sampleRateHz: max(DACSession.currentRouteInfo().currentSampleRate, 44_100))
-                        .listRowBackground(Color.clear)
-                    NavigationLink {
-                        EqualizerView()
-                    } label: {
-                        Label("Equalizer", systemImage: "slider.horizontal.3")
-                    }
-                    #if os(iOS)
-                    .onChange(of: dacModeEnabled) { _, _ in
-                        player.reloadAudioSessionPreference()
-                    }
-                    #endif
-                    #else
-                    LabeledContent("Output", value: player.audioRouteSummary)
-                    #endif
-                } header: {
-                    Text("Audio · THX Onyx")
-                } footer: {
-                    #if os(iOS)
-                    Text("Reference DAC: THX Onyx (ESS ES9281PRO). DAC mode maximizes preferred sample rate for USB and forces EQ off for a cleaner bit-perfect PCM path. MQA = hardware renderer on the Onyx — no software MQA decode in free ChibiAudio. DSD prefers DoP (encoder not in free v1 yet; never silent lossy fall-back).")
-                    #else
-                    Text("ChibiAudio for Mac plays through the system default output and follows device changes automatically. Select your DAC (e.g. THX Onyx) in Sound Settings — the app never forces a sample rate.")
-                    #endif
-                }
-
-                Section {
-                    if plex.isSignedIn {
-                        LabeledContent("Signed in as", value: plex.username.isEmpty ? "Plex" : plex.username)
-                        LabeledContent("Server", value: plexServerLabel)
-                        NavigationLink("Browse Plex Music") {
-                            PlexBrowserView()
-                        }
-                        Button("Sign out", role: .destructive) {
-                            confirmPlexSignOut = true
-                        }
-                    } else {
-                        Button("Continue with Plex") {
-                            showPlexSignIn = true
-                        }
-                        NavigationLink("Browse Plex Music") {
-                            PlexBrowserView()
-                        }
-                    }
-                } header: {
-                    Text("Plex")
-                } footer: {
-                    Text("Sign in with Plex. We never see your password. Personal music libraries only.")
-                }
-
-                Section {
-                    TextField("Server URL", text: $bandcampServer)
-                        #if os(iOS)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                        #endif
-                        .autocorrectionDisabled()
-                    TextField("Subsonic username", text: $bandcampUser)
-                        #if os(iOS)
-                        .textInputAutocapitalization(.never)
-                        #endif
-                        .autocorrectionDisabled()
-                    SecureField("Subsonic password", text: $bandcampPassword)
-                        #if os(iOS)
-                        .textInputAutocapitalization(.never)
-                        #endif
-                        .autocorrectionDisabled()
-                    Button("Save Bandcamp Settings") {
-                        let client = BandcampSubsonicClient.shared
-                        let trimmed = bandcampServer.trimmingCharacters(in: .whitespacesAndNewlines)
-                        client.serverURLString = trimmed.isEmpty
-                            ? BandcampSubsonicClient.defaultServerURL
-                            : trimmed
-                        client.username = bandcampUser.trimmingCharacters(in: .whitespacesAndNewlines)
-                        client.password = bandcampPassword
-                        bandcampServer = client.serverURLString
-                    }
-                    NavigationLink("Browse Bandcamp Collection") {
-                        BandcampBrowserView()
-                    }
-                } header: {
-                    Text("Bandcamp")
-                } footer: {
-                    Text("Official Subsonic API at \(BandcampSubsonicClient.defaultServerURL). Generate username and password in Bandcamp Fan Settings → Subsonic. Streams your purchased collection only — no HTML scraping.")
-                }
-
-                Section {
-                    if CarPlayAudioTemplateStub.isUnlocked(isPlusActive: plus.isPlusActive) {
-                        Label(CarPlayAudioTemplateStub.featureTitle, systemImage: "car.fill")
-                        Text(CarPlayAudioTemplateStub.featureDetail)
-                            .font(.footnote)
-                            .foregroundStyle(ChibiTheme.textSecondary)
-                        Text("Enable the CarPlay entitlement in Xcode when you are ready to ship — this repo does not invent Dist certs or entitlements.")
-                            .font(.caption)
-                            .foregroundStyle(ChibiTheme.textTertiary)
-                    } else {
-                        Button {
-                            showPaywall = true
-                        } label: {
-                            Label("\(CarPlayAudioTemplateStub.featureTitle) — Plus", systemImage: "lock.fill")
-                        }
-                    }
-
-                    if WatchCompanionStub.isUnlocked(isPlusActive: plus.isPlusActive) {
-                        Label(WatchCompanionStub.featureTitle, systemImage: "applewatch")
-                        Text(WatchCompanionStub.featureDetail)
-                            .font(.footnote)
-                            .foregroundStyle(ChibiTheme.textSecondary)
-                    } else {
-                        Button {
-                            showPaywall = true
-                        } label: {
-                            Label("\(WatchCompanionStub.featureTitle) — Plus", systemImage: "lock.fill")
-                        }
-                    }
-                } header: {
-                    Text("CarPlay & Watch")
-                } footer: {
-                    Text("CarPlay uses Apple Audio templates only (large Now Playing art, browse, queue). Visualizers and vinyl/mixtape stay on iPhone and iPad — never on the dash.")
-                }
-
-                Section {
-                    #if os(iOS)
-                    if plus.isPlusActive {
-                        Text("Ads are off while Plus is active.")
-                            .foregroundStyle(ChibiTheme.textSecondary)
-                    } else if AdMobConfig.isConfigured {
-                        Text("A free-tier banner may appear on Home, Library, Playlists, and Radio — never over Now Playing, DAC, or the visualizer.")
-                            .foregroundStyle(ChibiTheme.textSecondary)
-                    } else {
-                        Text("Ads stay off until an AdMob app ID is configured (empty in CI builds).")
-                            .foregroundStyle(ChibiTheme.textSecondary)
-                    }
-                    #else
-                    Text("The Mac app has no ads.")
-                        .foregroundStyle(ChibiTheme.textSecondary)
-                    #endif
-                } header: {
-                    Text("Ads")
-                }
-
-                Section("Stats") {
-                    LabeledContent("Total Songs", value: "\(library.tracks.count)")
-                    LabeledContent("Total Playlists", value: "\(library.playlists.count)")
-                }
-
-                Section {
-                    Toggle("Crash Reporting", isOn: $crashReportingEnabled)
-                } header: {
-                    Text("Crash Reporting")
-                } footer: {
-                    Text("When on, ChibiAudio captures crash details and recent log entries on this device. Nothing is sent automatically — if a crash is captured, a banner appears here in Settings and you can choose to share the report with the developer. Logs include file names and folder paths from your library. Off by default. App Store crash analytics (system-level) are unaffected by this setting.")
-                }
-
-                if crashReportingEnabled, crashService.hasPendingCrash {
-                    crashSection
-                }
-
-                Section("Diagnostics") {
-                    NavigationLink {
-                        LogsView()
-                    } label: {
-                        Label("Logs", systemImage: "doc.text.magnifyingglass")
-                    }
-                    Button {
-                        showWhatsNew = true
-                    } label: {
-                        Label("What's New", systemImage: "sparkles")
-                    }
-                    LabeledContent("Version", value: appVersion)
-                }
-
-                Section("About") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(AppBranding.tagline)
-                            .font(.headline)
-                            .foregroundStyle(ChibiTheme.textPrimary)
-                        Text("ChibiAudio is a free fork of LocalMusic with optional Plus. Local/cloud folders, Plex, Radio Browser, and Bandcamp Subsonic need no Plus subscription. Apple Music catalog play (optional later) needs Apple Music.")
-                            .font(.callout)
-
-                        Text("Based on open-source LocalMusic (MPL-2.0). Found a bug or have feedback?")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 4)
-
-                    Button {
-                        openURL(Self.forkURL)
-                    } label: {
-                        LabeledContent {
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label("ChibiAudio on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
-                        }
-                    }
-                    .tint(.primary)
-
-                    Button {
-                        openURL(Self.upstreamURL)
-                    } label: {
-                        LabeledContent {
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label("Upstream LocalMusic", systemImage: "link")
-                        }
-                    }
-                    .tint(.primary)
-                }
-            }
-            .navigationTitle("Settings")
+            settingsContainer
+            .navigationTitle(isSettingsWindow ? "" : "Settings")
             .chibiInlineNavTitle()
             .chibiListChrome()
             .chibiNavChrome()
             .tint(ChibiTheme.amber)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                if !isSettingsWindow {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
                 }
             }
             #if os(iOS)
@@ -386,6 +127,372 @@ struct SettingsView: View {
                 Button("Cancel", role: .cancel) {}
             }
         }
+    }
+
+    /// One scrolling list on iOS; a grouped form (the Mac settings idiom)
+    /// on the Mac. Both hold the same sections.
+    @ViewBuilder
+    private var settingsContainer: some View {
+        #if os(macOS)
+        Form { sections }
+            .formStyle(.grouped)
+        #else
+        List { sections }
+        #endif
+    }
+
+    @ViewBuilder
+    private var sections: some View {
+        if panes.contains(.plus) {
+            Section {
+                if plus.isPlusActive {
+                    Label("ChibiAudio Plus is active", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(ChibiTheme.teal)
+                    Button("Manage Plus") { showPaywall = true }
+                } else {
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        Label("Upgrade to Plus — \(plus.displayPrice)/mo", systemImage: "sparkles")
+                    }
+                    Button("Restore Purchases") {
+                        Task { _ = await plus.restore() }
+                    }
+                }
+            } header: {
+                Text("ChibiAudio Plus")
+            } footer: {
+                Text("Plus removes ads and unlocks all visualizer modes, plus CarPlay and Watch stubs. Local files, Plex, Radio Browser, and album/track art stay free.")
+            }
+        }
+
+        if panes.contains(.general) {
+            Section {
+                Button {
+                    #if os(iOS)
+                    showFolderPicker = true
+                    #else
+                    DocumentPicker.pickFolder { adoptFolder($0) }
+                    #endif
+                } label: {
+                    LabeledContent {
+                        Text(library.folderURL?.lastPathComponent ?? "Not selected")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("Folder", systemImage: "folder")
+                    }
+                }
+                .tint(.primary)
+
+                Button {
+                    Task { await library.rescan() }
+                } label: {
+                    Label("Reload Music", systemImage: "arrow.clockwise")
+                }
+                .disabled(library.folderURL == nil || library.isScanning)
+
+                if let lastSynced = library.lastSynced {
+                    LabeledContent("Last Synced", value: lastSynced, format: .dateTime)
+                }
+
+                if library.isScanning {
+                    if let progress = library.scanProgress, progress.total > 0 {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ProgressView(value: Double(progress.completed),
+                                         total: Double(max(progress.total, 1)))
+                            Text("Scanning \(progress.completed) of \(progress.total)…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                    } else {
+                        HStack {
+                            ProgressView()
+                            Text("Scanning folder…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Music Folder")
+            } footer: {
+                #if os(iOS)
+                Text("Pick On My iPhone, app Documents, iCloud Drive, or Google Drive (install the Drive app and enable it under Files). Bookmarks persist; cloud files download-to-play when the provider supports it.")
+                #else
+                Text("Pick your music folder. Access survives relaunches via a security-scoped bookmark (read-only, like the iOS picker).")
+                #endif
+            }
+
+        }
+
+        if panes.contains(.playback) {
+            Section {
+                #if os(iOS)
+                Toggle("Hi-res / DAC mode", isOn: $dacModeEnabled)
+                    .tint(ChibiTheme.teal)
+                DACRouteIndicator(
+                    summary: player.audioRouteSummary,
+                    isUSB: DACSession.currentRouteInfo().isUSBAudio
+                )
+                if dacModeEnabled && DACSession.currentRouteInfo().isUSBAudio {
+                    BitPerfectOnyxPill()
+                        .listRowBackground(Color.clear)
+                }
+                SampleRateChip(sampleRateHz: max(DACSession.currentRouteInfo().currentSampleRate, 44_100))
+                    .listRowBackground(Color.clear)
+                NavigationLink {
+                    EqualizerView()
+                } label: {
+                    Label("Equalizer", systemImage: "slider.horizontal.3")
+                }
+                #if os(iOS)
+                .onChange(of: dacModeEnabled) { _, _ in
+                    player.reloadAudioSessionPreference()
+                }
+                #endif
+                #else
+                LabeledContent("Output device", value: macOutput.deviceName)
+                LabeledContent("Device sample rate", value: macOutput.sampleRateLabel)
+                LabeledContent("Connection", value: macOutput.transportLabel)
+                LabeledContent("Equalizer", value: "Not available on Mac")
+                #endif
+            } header: {
+                Text("Audio · THX Onyx")
+            } footer: {
+                #if os(iOS)
+                Text("Reference DAC: THX Onyx (ESS ES9281PRO). DAC mode maximizes preferred sample rate for USB and forces EQ off for a cleaner bit-perfect PCM path. MQA = hardware renderer on the Onyx — no software MQA decode in free ChibiAudio. DSD prefers DoP (encoder not in free v1 yet; never silent lossy fall-back).")
+                #else
+                Text("ChibiAudio for Mac plays through the system default output and follows device changes automatically. Choose your DAC (for example THX Onyx) in Sound settings or with the output button in the player bar; set its sample rate in Audio MIDI Setup. The app reads the device rate but never changes it, so there is no DAC mode or bit-perfect indicator on the Mac. Hi-res and DAC mode and the equalizer are iPhone and iPad features.")
+                #endif
+            }
+        }
+
+        if panes.contains(.sources) {
+            Section {
+                if plex.isSignedIn {
+                    LabeledContent("Signed in as", value: plex.username.isEmpty ? "Plex" : plex.username)
+                    LabeledContent("Server", value: plexServerLabel)
+                    browseLink("Browse Plex Music", destination: .plex) {
+                        PlexBrowserView()
+                    }
+                    Button("Sign out", role: .destructive) {
+                        confirmPlexSignOut = true
+                    }
+                } else {
+                    Button("Continue with Plex") {
+                        showPlexSignIn = true
+                    }
+                    browseLink("Browse Plex Music", destination: .plex) {
+                        PlexBrowserView()
+                    }
+                }
+            } header: {
+                Text("Plex")
+            } footer: {
+                Text("Sign in with Plex. We never see your password. Personal music libraries only.")
+            }
+
+            Section {
+                TextField("Server URL", text: $bandcampServer)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    #endif
+                    .autocorrectionDisabled()
+                TextField("Subsonic username", text: $bandcampUser)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .autocorrectionDisabled()
+                SecureField("Subsonic password", text: $bandcampPassword)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .autocorrectionDisabled()
+                Button("Save Bandcamp Settings") {
+                    let client = BandcampSubsonicClient.shared
+                    let trimmed = bandcampServer.trimmingCharacters(in: .whitespacesAndNewlines)
+                    client.serverURLString = trimmed.isEmpty
+                        ? BandcampSubsonicClient.defaultServerURL
+                        : trimmed
+                    client.username = bandcampUser.trimmingCharacters(in: .whitespacesAndNewlines)
+                    client.password = bandcampPassword
+                    bandcampServer = client.serverURLString
+                }
+                browseLink("Browse Bandcamp Collection", destination: .bandcamp) {
+                    BandcampBrowserView()
+                }
+            } header: {
+                Text("Bandcamp")
+            } footer: {
+                Text("Official Subsonic API at \(BandcampSubsonicClient.defaultServerURL). Generate username and password in Bandcamp Fan Settings → Subsonic. Streams your purchased collection only — no HTML scraping.")
+            }
+        }
+
+        if panes.contains(.plus) {
+            #if os(iOS)
+            // CarPlay and Watch are iPhone companions; the Mac omits them.
+            Section {
+                if CarPlayAudioTemplateStub.isUnlocked(isPlusActive: plus.isPlusActive) {
+                    Label(CarPlayAudioTemplateStub.featureTitle, systemImage: "car.fill")
+                    Text(CarPlayAudioTemplateStub.featureDetail)
+                        .font(.footnote)
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                    Text("Enable the CarPlay entitlement in Xcode when you are ready to ship — this repo does not invent Dist certs or entitlements.")
+                        .font(.caption)
+                        .foregroundStyle(ChibiTheme.textTertiary)
+                } else {
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        Label("\(CarPlayAudioTemplateStub.featureTitle) — Plus", systemImage: "lock.fill")
+                    }
+                }
+
+                if WatchCompanionStub.isUnlocked(isPlusActive: plus.isPlusActive) {
+                    Label(WatchCompanionStub.featureTitle, systemImage: "applewatch")
+                    Text(WatchCompanionStub.featureDetail)
+                        .font(.footnote)
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                } else {
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        Label("\(WatchCompanionStub.featureTitle) — Plus", systemImage: "lock.fill")
+                    }
+                }
+            } header: {
+                Text("CarPlay & Watch")
+            } footer: {
+                Text("CarPlay uses Apple Audio templates only (large Now Playing art, browse, queue). Visualizers and vinyl/mixtape stay on iPhone and iPad — never on the dash.")
+            }
+            #endif
+
+            Section {
+                #if os(iOS)
+                if plus.isPlusActive {
+                    Text("Ads are off while Plus is active.")
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                } else if AdMobConfig.isConfigured {
+                    Text("A free-tier banner may appear on Home, Library, Playlists, and Radio — never over Now Playing, DAC, or the visualizer.")
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                } else {
+                    Text("Ads stay off until an AdMob app ID is configured (empty in CI builds).")
+                        .foregroundStyle(ChibiTheme.textSecondary)
+                }
+                #else
+                Text("The Mac app has no ads.")
+                    .foregroundStyle(ChibiTheme.textSecondary)
+                #endif
+            } header: {
+                Text("Ads")
+            }
+        }
+
+        if panes.contains(.general) {
+            Section("Stats") {
+                LabeledContent("Total Songs", value: "\(library.tracks.count)")
+                LabeledContent("Total Playlists", value: "\(library.playlists.count)")
+            }
+        }
+
+        if panes.contains(.diagnostics) {
+            Section {
+                Toggle("Crash Reporting", isOn: $crashReportingEnabled)
+            } header: {
+                Text("Crash Reporting")
+            } footer: {
+                Text("When on, ChibiAudio captures crash details and recent log entries on this device. Nothing is sent automatically — if a crash is captured, a banner appears here in Settings and you can choose to share the report with the developer. Logs include file names and folder paths from your library. Off by default. App Store crash analytics (system-level) are unaffected by this setting.")
+            }
+
+            if crashReportingEnabled, crashService.hasPendingCrash {
+                crashSection
+            }
+
+            Section("Diagnostics") {
+                NavigationLink {
+                    LogsView()
+                } label: {
+                    Label("Logs", systemImage: "doc.text.magnifyingglass")
+                }
+                Button {
+                    showWhatsNew = true
+                } label: {
+                    Label("What's New", systemImage: "sparkles")
+                }
+                LabeledContent("Version", value: appVersion)
+            }
+
+            Section("About") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(AppBranding.tagline)
+                        .font(.headline)
+                        .foregroundStyle(ChibiTheme.textPrimary)
+                    Text("ChibiAudio is a free fork of LocalMusic with optional Plus. Local/cloud folders, Plex, Radio Browser, and Bandcamp Subsonic need no Plus subscription. Apple Music catalog play (optional later) needs Apple Music.")
+                        .font(.callout)
+
+                    Text("Based on open-source LocalMusic (MPL-2.0). Found a bug or have feedback?")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+
+                Button {
+                    openURL(Self.forkURL)
+                } label: {
+                    LabeledContent {
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("ChibiAudio on GitHub", systemImage: "chevron.left.forwardslash.chevron.right")
+                    }
+                }
+                .tint(.primary)
+
+                Button {
+                    openURL(Self.upstreamURL)
+                } label: {
+                    LabeledContent {
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("Upstream LocalMusic", systemImage: "link")
+                    }
+                }
+                .tint(.primary)
+            }
+        }
+    }
+
+    /// Source browsers push inside Settings on iOS. On the Mac they live in
+    /// the main window's sidebar, so Settings jumps there instead of
+    /// browsing music inside the Settings window.
+    @ViewBuilder
+    private func browseLink<Destination: View>(
+        _ title: String,
+        destination tab: ChibiTab,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) -> some View {
+        #if os(macOS)
+        if isSettingsWindow {
+            Button {
+                tabs.selected = tab
+                MacWindows.bringMainWindowForward()
+            } label: {
+                LabeledContent(title) {
+                    Text("Opens in Sidebar")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            NavigationLink(title, destination: destination)
+        }
+        #else
+        NavigationLink(title, destination: destination)
+        #endif
     }
 
     @ViewBuilder

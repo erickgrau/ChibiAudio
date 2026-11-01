@@ -10,8 +10,6 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var showFolderPicker = false
     @State private var showPlexSignIn = false
-    @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
-    private let crashService = CrashDiagnosticsService.shared
 
     private var hasLibrary: Bool {
         library.folderURL != nil || !library.tracks.isEmpty
@@ -27,20 +25,20 @@ struct HomeView: View {
 
                     ContinueCard(
                         onOpenNowPlaying: { tabs.selected = .nowPlaying },
-                        onChooseFolder: { showFolderPicker = true }
+                        onChooseFolder: chooseFolder
                     )
 
                     RecentSection(
-                        onChooseFolder: { showFolderPicker = true }
+                        onChooseFolder: chooseFolder
                     )
 
                     PlaylistsShortcutSection()
 
                     LibraryShortcutsSection(
-                        onFolders: { showFolderPicker = true },
+                        onFolders: chooseFolder,
                         onAllTracks: { tabs.selected = .library },
                         onRadio: { tabs.selected = .radio },
-                        onPlex: { showPlexSignIn = true }
+                        onPlex: openPlex
                     )
                 }
                 .padding(.horizontal, 16)
@@ -52,20 +50,7 @@ struct HomeView: View {
             .chibiNavChrome()
             .toolbar {
                 ToolbarItem(placement: PlatformToolbar.trailing) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gear")
-                            .foregroundStyle(ChibiTheme.textPrimary)
-                            .overlay(alignment: .topTrailing) {
-                                if crashReportingEnabled, crashService.hasPendingCrash {
-                                    Circle()
-                                        .fill(Color.red)
-                                        .frame(width: 8, height: 8)
-                                        .offset(x: 4, y: -4)
-                                }
-                            }
-                    }
+                    SettingsToolbarButton { showSettings = true }
                 }
             }
             .chibiSheet(isPresented: $showSettings, size: .regular) {
@@ -94,13 +79,7 @@ struct HomeView: View {
             Text(folderHintText)
                 .font(.subheadline)
                 .foregroundStyle(ChibiTheme.textSecondary)
-            Button {
-                #if os(iOS)
-                showFolderPicker = true
-                #else
-                DocumentPicker.pickFolder { adoptFolder($0) }
-                #endif
-            } label: {
+            Button(action: chooseFolder) {
                 Label("Add Folder", systemImage: "folder.badge.plus")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -111,6 +90,26 @@ struct HomeView: View {
         }
         .padding(18)
         .chibiGlassCard(cornerRadius: 18)
+    }
+
+    /// iOS presents the document picker sheet; the Mac runs NSOpenPanel
+    /// (there is no folder sheet on the Mac, so a sheet flag did nothing).
+    private func chooseFolder() {
+        #if os(iOS)
+        showFolderPicker = true
+        #else
+        DocumentPicker.pickFolder { adoptFolder($0) }
+        #endif
+    }
+
+    /// iOS signs in from a sheet; the Mac opens the Plex source in the
+    /// sidebar, which offers sign-in when needed.
+    private func openPlex() {
+        #if os(iOS)
+        showPlexSignIn = true
+        #else
+        tabs.selected = .plex
+        #endif
     }
 
     private var folderHintText: String {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NowPlayingView: View {
     @Environment(AudioPlayerManager.self) private var player
+    @Environment(TabRouter.self) private var tabs
 
     @State private var showLyrics = false
     @State private var showAddToPlaylist = false
@@ -40,7 +41,13 @@ struct NowPlayingView: View {
                         .accessibilityLabel("Lyrics")
 
                         Button {
+                            // The Mac keeps the queue in the window's inspector
+                            // column; iOS presents it as a sheet.
+                            #if os(macOS)
+                            tabs.showsQueue.toggle()
+                            #else
                             showUpNext = true
+                            #endif
                         } label: {
                             Image(systemName: "list.bullet")
                         }
@@ -255,18 +262,24 @@ struct NowPlayingView: View {
                     Image(systemName: "backward.end.fill")
                         .font(.system(size: 26))
                 }
+                .accessibilityLabel("Previous Track")
 
                 Button { player.togglePlayPause() } label: {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 42))
                         .contentTransition(.symbolEffect(.replace))
                 }
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
 
                 Button { player.next() } label: {
                     Image(systemName: "forward.end.fill")
                         .font(.system(size: 26))
                 }
+                .accessibilityLabel("Next Track")
             }
+            #if os(macOS)
+            .buttonStyle(.borderless)
+            #endif
             .foregroundStyle(ChibiTheme.textPrimary)
 
             HStack(spacing: 36) {
@@ -281,12 +294,18 @@ struct NowPlayingView: View {
                         )
                         .contentShape(Circle())
                 }
+                .accessibilityLabel("Shuffle")
+                .accessibilityValue(player.shuffleEnabled ? "On" : "Off")
 
                 // AirPlay Soft PASS — system route picker; USB DAC stays bit-perfect when selected.
                 #if os(iOS)
                 RoutePickerButton()
                     .frame(width: 40, height: 40)
                     .accessibilityLabel("Audio Output")
+                #else
+                RoutePickerButton(player: player.routingPlayer)
+                    .frame(width: 40, height: 40)
+                    .help("Audio Output (AirPlay)")
                 #endif
 
                 Button { player.cycleRepeatMode() } label: {
@@ -300,6 +319,8 @@ struct NowPlayingView: View {
                         )
                         .contentShape(Circle())
                 }
+                .accessibilityLabel("Repeat")
+                .accessibilityValue(player.repeatMode == .off ? "Off" : player.repeatMode == .all ? "All" : "One")
 
                 Button {
                     showAddToPlaylist = true
