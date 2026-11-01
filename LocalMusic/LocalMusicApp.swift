@@ -22,8 +22,18 @@ struct LocalMusicApp: App {
         #endif
     }
 
+    /// Mac UI tests host the app. Under XCTest the Mac app never scans,
+    /// rescans or restores the user's library, or shows release notes.
+    private var isHostingMacTests: Bool {
+        #if os(macOS)
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        #else
+        false
+        #endif
+    }
+
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: Self.mainWindowID) {
             rootContent
                 .chibiCanvas()
             .environment(player)
@@ -45,11 +55,7 @@ struct LocalMusicApp: App {
                 }
             }
             .task {
-                #if os(macOS)
-                // Mac UI tests host the app; never scan or restore the
-                // user's library, or show release notes, under XCTest.
-                if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
-                #endif
+                if isHostingMacTests { return }
                 await library.bootstrap()
                 if let url = library.folderURL {
                     player.startAccessingFolder(url)
@@ -68,7 +74,7 @@ struct LocalMusicApp: App {
             }
             .onChange(of: scenePhase) { _, phase in
                 Log.ui.debug("Scene phase: \(String(describing: phase))")
-                if phase == .active {
+                if phase == .active, !isHostingMacTests {
                     Task {
                         await library.checkForExternalChanges()
                         await plus.refreshEntitlements()
@@ -94,6 +100,9 @@ struct LocalMusicApp: App {
         .windowResizability(.contentMinSize)
         #endif
     }
+
+    /// Lets Settings reopen the music window on the Mac after it was closed.
+    static let mainWindowID = "main"
 
     #if os(macOS)
     /// Mac menus. Space and Command-Left/Right are menu key equivalents;

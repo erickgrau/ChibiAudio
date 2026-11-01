@@ -85,8 +85,11 @@ final class MacPlaybackKeyMonitorTests: XCTestCase {
     /// Playback menu's bindings that the monitor protects. (Pass-through
     /// with no text focus is covered by PlaybackKeyRoutingTests.)
     func testMenuBarExposesSettingsAndPlaybackShortcuts() throws {
-        // SwiftUI builds the menu bar after launch; give it a moment.
-        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        // SwiftUI builds the menu bar after launch; wait for Playback.
+        let deadline = Date().addingTimeInterval(10)
+        while NSApp.mainMenu?.items.contains(where: { $0.title == "Playback" }) != true, Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        }
         let menu = try XCTUnwrap(NSApp.mainMenu)
         func items(_ m: NSMenu) -> [NSMenuItem] {
             m.items.flatMap { [$0] + ($0.submenu.map(items) ?? []) }

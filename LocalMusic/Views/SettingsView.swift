@@ -64,6 +64,7 @@ struct SettingsView: View {
     private let crashService = CrashDiagnosticsService.shared
     #if os(macOS)
     @Environment(TabRouter.self) private var tabs
+    @Environment(\.openWindow) private var openWindow
     @State private var macOutput = MacAudioOutput.shared
     #endif
 
@@ -263,7 +264,7 @@ struct SettingsView: View {
                 #if os(iOS)
                 Text("Reference DAC: THX Onyx (ESS ES9281PRO). DAC mode maximizes preferred sample rate for USB and forces EQ off for a cleaner bit-perfect PCM path. MQA = hardware renderer on the Onyx — no software MQA decode in free ChibiAudio. DSD prefers DoP (encoder not in free v1 yet; never silent lossy fall-back).")
                 #else
-                Text("ChibiAudio for Mac plays through the system default output and follows device changes automatically. Choose your DAC (for example THX Onyx) in Sound settings or with the output button in the player bar; set its sample rate in Audio MIDI Setup. The app reads the device rate but never changes it, so there is no DAC mode or bit-perfect indicator on the Mac. Hi-res and DAC mode and the equalizer are iPhone and iPad features.")
+                Text("ChibiAudio for Mac plays through the system default output and follows device changes automatically. Choose your DAC (for example THX Onyx) in Sound settings or with the output button in the player bar; set its sample rate in Audio MIDI Setup. The app reads the device rate but never changes it, so there is no DAC mode or bit-perfect indicator on the Mac. An AirPlay device picked with the output button plays ChibiAudio only; the device above stays the system output. Hi-res and DAC mode and the equalizer are iPhone and iPad features.")
                 #endif
             }
         }
@@ -480,7 +481,9 @@ struct SettingsView: View {
         if isSettingsWindow {
             Button {
                 tabs.selected = tab
-                MacWindows.bringMainWindowForward()
+                if !MacWindows.bringMainWindowForward() {
+                    openWindow(id: LocalMusicApp.mainWindowID)
+                }
             } label: {
                 LabeledContent(title) {
                     Text("Opens in Sidebar")

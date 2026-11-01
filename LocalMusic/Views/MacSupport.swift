@@ -5,14 +5,22 @@ import SwiftUI
 /// Window helpers for the Mac shell.
 @MainActor
 enum MacWindows {
-    /// Brings the main music window forward, e.g. after Settings jumps to a
-    /// sidebar source. The main window is the one that can be main and is
-    /// not the Settings panel.
-    static func bringMainWindowForward() {
-        let candidates = NSApp.windows.filter { $0.canBecomeMain && $0.isVisible }
-        let main = candidates.first { !$0.isKeyWindow } ?? candidates.first
+    /// Brings the music window forward, e.g. after Settings jumps to a
+    /// sidebar source. Returns false when no music window is open (the
+    /// caller reopens one); the Settings window never counts.
+    @discardableResult
+    static func bringMainWindowForward() -> Bool {
+        let main = NSApp.windows.first { window in
+            window.canBecomeMain && window.isVisible
+                && window.identifier?.rawValue.localizedCaseInsensitiveContains("settings") != true
+        }
         main?.makeKeyAndOrderFront(nil)
+        return main != nil
     }
+
+    /// Settings tab to show next time the Settings window opens, so
+    /// "Open Settings" from a source lands on the Sources pane.
+    static let settingsPaneKey = "macSettingsPane"
 }
 
 /// Music folder selection shared by the sidebar, the File menu and Home.

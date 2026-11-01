@@ -176,17 +176,37 @@ final class MacSheetPresentationTests: XCTestCase {
 
     // MARK: - Settings window
 
-    func testSettingsWindowPanesFitAtMinimumSize() {
+    func testSettingsWindowContentKeepsItsMinimumSize() {
+        // The Settings scene sizes its window from MacSettingsView; with no
+        // frame it would collapse the way the sheets did.
+        let controller = NSHostingController(rootView:
+            MacSettingsView()
+                .environment(player).environment(library).environment(recents)
+                .environment(tabs).environment(plus)
+        )
+        let fitting = controller.view.fittingSize
+        print("SHEET-EVIDENCE settings window content: fitting \(Int(fitting.width))x\(Int(fitting.height))")
+        XCTAssertGreaterThanOrEqual(fitting.width, 560)
+        XCTAssertGreaterThanOrEqual(fitting.height, 440)
+    }
+
+    func testEverySettingsPaneRendersInAMinimumSizeWindow() {
+        // Render smoke test: each pane laid out in a real window at the
+        // Settings minimum size (the visual check stays with Engineering).
         for pane in SettingsPane.allCases {
-            let controller = NSHostingController(rootView:
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 560, height: 440),
+                                  styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentViewController = NSHostingController(rootView:
                 SettingsView(panes: [pane], isSettingsWindow: true)
-                    .frame(minWidth: 560, minHeight: 440)
                     .environment(player).environment(library).environment(recents)
                     .environment(tabs).environment(plus)
             )
-            let fitting = controller.view.fittingSize
-            print("SHEET-EVIDENCE settings pane \(pane.rawValue): fitting \(Int(fitting.width))x\(Int(fitting.height))")
-            XCTAssertGreaterThanOrEqual(fitting.height, 440, pane.title)
+            window.setContentSize(NSSize(width: 560, height: 440))
+            window.orderFront(nil)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+            XCTAssertFalse(window.contentView?.subviews.isEmpty ?? true, pane.title)
+            window.close()
         }
     }
 }

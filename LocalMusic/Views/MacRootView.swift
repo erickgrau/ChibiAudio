@@ -115,7 +115,7 @@ struct MacRootView: View {
 /// The Mac Settings window (ChibiAudio > Settings…, Command-comma, or the
 /// gear on Home and Songs). One tab per pane of the shared SettingsView.
 struct MacSettingsView: View {
-    @State private var selection: SettingsPane = .general
+    @AppStorage(MacWindows.settingsPaneKey) private var selection: SettingsPane = .general
 
     var body: some View {
         TabView(selection: $selection) {

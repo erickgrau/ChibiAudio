@@ -2,8 +2,9 @@ import Foundation
 
 /// An album built from the tags of the tracks in the library.
 struct AlbumSummary: Identifiable, Hashable, Sendable {
-    /// Case-folded album title; tracks have no album-artist tag, so the
-    /// title alone groups an album (compilations stay together).
+    /// Case-folded album title plus the album's folder. Tracks have no
+    /// album-artist tag, so the folder keeps same-titled albums (two
+    /// "Greatest Hits") apart while a compilation's folder stays together.
     let id: String
     let title: String
     /// The single artist on every track, or "Various Artists".
@@ -30,7 +31,7 @@ enum LibraryBrowseIndex {
     static let variousArtists = "Various Artists"
 
     static func albums(from tracks: [Track]) -> [AlbumSummary] {
-        let groups = Dictionary(grouping: tracks) { key(for: $0.album) }
+        let groups = Dictionary(grouping: tracks) { key(for: $0.album) + "|" + albumFolder(of: $0.url) }
         return groups.compactMap { id, members -> AlbumSummary? in
             guard let first = members.first else { return nil }
             let ordered = members.sorted(by: fileOrder)
@@ -43,7 +44,12 @@ enum LibraryBrowseIndex {
                 tracks: ordered
             )
         }
-        .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        .sorted {
+            let byTitle = $0.title.localizedStandardCompare($1.title)
+            return byTitle == .orderedSame
+                ? $0.artist.localizedStandardCompare($1.artist) == .orderedAscending
+                : byTitle == .orderedAscending
+        }
     }
 
     static func artists(from tracks: [Track]) -> [ArtistSummary] {
@@ -62,6 +68,15 @@ enum LibraryBrowseIndex {
             )
         }
         .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    /// The folder holding an album's files. Disc subfolders ("CD1",
+    /// "Disc 2") count as their parent so multi-disc sets stay one album.
+    static func albumFolder(of url: URL) -> String {
+        let folder = url.deletingLastPathComponent().standardized
+        let name = folder.lastPathComponent.lowercased()
+        let isDiscFolder = name.range(of: #"^(cd|disc|disk)\s*\d+$"#, options: .regularExpression) != nil
+        return (isDiscFolder ? folder.deletingLastPathComponent() : folder).path
     }
 
     private static func key(for value: String) -> String {

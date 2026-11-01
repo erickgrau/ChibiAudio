@@ -19,7 +19,9 @@ final class MacAudioOutput {
     private(set) var isUSB = false
     private(set) var transportLabel = "Unknown"
 
-    @ObservationIgnored private var observedDevice = AudioObjectID(kAudioObjectUnknown)
+    /// Devices with a sample-rate listener. Listeners stay registered for
+    /// the app's lifetime, so each device gets exactly one.
+    @ObservationIgnored private var observedDevices: Set<AudioObjectID> = []
 
     private init() {
         var address = Self.address(kAudioHardwarePropertyDefaultOutputDevice)
@@ -61,8 +63,7 @@ final class MacAudioOutput {
 
     /// Re-reads when the user changes the device rate in Audio MIDI Setup.
     private func observeSampleRate(of device: AudioObjectID) {
-        guard device != observedDevice else { return }
-        observedDevice = device
+        guard observedDevices.insert(device).inserted else { return }
         var address = Self.address(kAudioDevicePropertyNominalSampleRate)
         AudioObjectAddPropertyListenerBlock(device, &address, .main) { _, _ in
             MainActor.assumeIsolated { MacAudioOutput.shared.refresh() }

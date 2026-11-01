@@ -54,6 +54,24 @@ struct LibraryBrowseIndexTests {
         #expect(blue.year == 2001)
     }
 
+    @Test func sameTitledAlbumsInDifferentFoldersStaySeparate() {
+        let tracks = [
+            Fixtures.track(title: "1", artist: "Ann", album: "Greatest Hits", path: "/m/Ann/Greatest Hits/01.mp3"),
+            Fixtures.track(title: "2", artist: "Bo", album: "Greatest Hits", path: "/m/Bo/Greatest Hits/01.mp3"),
+        ]
+        let albums = LibraryBrowseIndex.albums(from: tracks)
+        #expect(albums.count == 2)
+        #expect(albums.map(\.artist) == ["Ann", "Bo"])
+    }
+
+    @Test func discSubfoldersStayOneAlbum() {
+        let tracks = [
+            Fixtures.track(title: "1", artist: "Ann", album: "Set", path: "/m/Set/CD1/01.mp3"),
+            Fixtures.track(title: "2", artist: "Ann", album: "Set", path: "/m/Set/Disc 2/01.mp3"),
+        ]
+        #expect(LibraryBrowseIndex.albums(from: tracks).count == 1)
+    }
+
     @Test func compilationsShowVariousArtists() {
         let tracks = [
             Fixtures.track(title: "1", artist: "Ann", album: "Mix", path: "/m/Mix/01.mp3"),
