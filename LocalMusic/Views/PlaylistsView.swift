@@ -103,7 +103,7 @@ struct PlaylistsView: View {
             } message: {
                 Text("Enter a name for the new playlist.")
             }
-            .sheet(isPresented: $showSmartPlaylist) {
+            .chibiSheet(isPresented: $showSmartPlaylist, size: .large) {
                 SmartPlaylistView()
             }
             .chibiCanvas()

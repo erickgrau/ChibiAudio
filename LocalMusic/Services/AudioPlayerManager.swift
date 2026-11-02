@@ -153,9 +153,15 @@ final class AudioPlayerManager {
         #if os(iOS)
         DACSession.currentRouteInfo().summary
         #else
-        "System default output"
+        MacAudioOutput.shared.summary
         #endif
     }
+
+    #if os(macOS)
+    /// The underlying player, for the Mac AirPlay route picker. `nil`
+    /// until the first track loads.
+    var routingPlayer: AVPlayer? { player }
+    #endif
 
     /// Apple's interruption and route-change articles observe via
     /// `NotificationCenter.notifications(named:)`. That API's docs state

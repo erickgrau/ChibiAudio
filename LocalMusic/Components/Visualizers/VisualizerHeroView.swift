@@ -53,7 +53,7 @@ struct VisualizerHeroView: View {
             analyzer.setMeteringEnabled(false)
         }
         .animation(.spring(response: 0.45), value: mode)
-        .sheet(isPresented: $showPaywall) {
+        .chibiSheet(isPresented: $showPaywall, size: .large) {
             PaywallView()
         }
     }

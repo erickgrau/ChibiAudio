@@ -7,6 +7,9 @@ struct BandcampBrowserView: View {
     @State private var tracks: [BandcampSubsonicClient.BandcampTrack] = []
     @State private var selectedAlbum: BandcampSubsonicClient.BandcampAlbum?
     @State private var addPayload: AddToPlaylistPayload?
+    #if os(macOS)
+    @Environment(\.openSettings) private var openSettings
+    #endif
 
     var body: some View {
         List {
@@ -16,6 +19,14 @@ struct BandcampBrowserView: View {
                         .font(.footnote)
                         .foregroundStyle(ChibiTheme.textSecondary)
                     SourceChip(kind: .bandcamp)
+                    #if os(macOS)
+                    Button {
+                        UserDefaults.standard.set(SettingsPane.sources.rawValue, forKey: MacWindows.settingsPaneKey)
+                        openSettings()
+                    } label: {
+                        Label("Open Sources Settings", systemImage: "gear")
+                    }
+                    #endif
                 }
             } else {
                 Section {
@@ -95,7 +106,7 @@ struct BandcampBrowserView: View {
         .chibiListChrome()
         .chibiNavChrome()
         .tint(ChibiTheme.amber)
-        .sheet(item: $addPayload) { payload in
+        .chibiSheet(item: $addPayload, size: .compact) { payload in
             AddToPlaylistSheet(payload: payload)
         }
         .task {

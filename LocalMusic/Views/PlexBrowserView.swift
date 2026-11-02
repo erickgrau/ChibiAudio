@@ -30,10 +30,10 @@ struct PlexBrowserView: View {
         .chibiCanvas()
         .chibiNavChrome()
         .tint(ChibiTheme.amber)
-        .sheet(isPresented: $showSignIn) {
+        .chibiSheet(isPresented: $showSignIn, size: .compact) {
             PlexSignInView()
         }
-        .sheet(item: $addPayload) { payload in
+        .chibiSheet(item: $addPayload, size: .compact) { payload in
             AddToPlaylistSheet(payload: payload)
         }
         .task {
@@ -203,7 +203,7 @@ struct PlexAlbumDetailView: View {
         .chibiListChrome()
         .navigationTitle(album.title)
         .chibiInlineNavTitle()
-        .sheet(item: $addPayload) { payload in
+        .chibiSheet(item: $addPayload, size: .compact) { payload in
             AddToPlaylistSheet(payload: payload)
         }
         .task {
