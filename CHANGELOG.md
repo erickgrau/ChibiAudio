@@ -1,5 +1,16 @@
 # CHANGELOG (ChibiAudio fork)
 
+## Mac recovery (unreleased)
+
+- Mac sheets no longer collapse to a 470 x 113 title bar: every sheet goes through `chibiSheet`, which sizes content on the Mac and does nothing on iOS
+- Native Mac Settings window (Command-comma): General, Sources, Playback, Plus and Diagnostics tabs built from the shared Settings sections
+- Mac sidebar adds Albums, Artists, Plex and Bandcamp; music folder pinned under the sidebar; File > Choose Music Folder / Reload Music
+- Persistent Mac player bar, Up Next inspector beside any section, Playback menu (Shuffle, Repeat, Show Up Next) and Command-1 to Command-8 navigation
+- Space and Command-arrows go to the focused text field while typing instead of toggling playback or skipping tracks
+- Mac Playback settings show the real output device, sample rate and connection (read only); AirPlay picker in the player bar
+- Transport controls carry accessibility labels on both platforms
+- Known gaps, documented in `docs/MAC_RECOVERY.md`: no Mac DAC mode or bit-perfect path; the equalizer is not attached to playback on either platform
+
 ## Multi-seed playlists (owned library)
 
 - **Make a Playlist** Soft PASS on the Playlists tab: pick up to **5** song or artist seeds from music you already have

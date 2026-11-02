@@ -17,11 +17,23 @@ struct LocalMusicApp: App {
         CrashDiagnosticsService.shared.setEnabled(enabled)
         #if os(iOS)
         AdMobConfig.configureIfNeeded()
+        #else
+        MacPlaybackKeyMonitor.install()
+        #endif
+    }
+
+    /// Mac UI tests host the app. Under XCTest the Mac app never scans,
+    /// rescans or restores the user's library, or shows release notes.
+    private var isHostingMacTests: Bool {
+        #if os(macOS)
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        #else
+        false
         #endif
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: Self.mainWindowID) {
             rootContent
                 .chibiCanvas()
             .environment(player)
@@ -29,7 +41,7 @@ struct LocalMusicApp: App {
             .environment(recents)
             .environment(tabs)
             .environment(plus)
-            .sheet(isPresented: $showWhatsNew, onDismiss: { WhatsNew.markSeen() }) {
+            .chibiSheet(isPresented: $showWhatsNew, size: .large, onDismiss: { WhatsNew.markSeen() }) {
                 WhatsNewView(releases: Array(WhatsNew.unseen.prefix(1))) {
                     showWhatsNew = false
                 }
@@ -43,6 +55,7 @@ struct LocalMusicApp: App {
                 }
             }
             .task {
+                if isHostingMacTests { return }
                 await library.bootstrap()
                 if let url = library.folderURL {
                     player.startAccessingFolder(url)
@@ -61,7 +74,7 @@ struct LocalMusicApp: App {
             }
             .onChange(of: scenePhase) { _, phase in
                 Log.ui.debug("Scene phase: \(String(describing: phase))")
-                if phase == .active {
+                if phase == .active, !isHostingMacTests {
                     Task {
                         await library.checkForExternalChanges()
                         await plus.refreshEntitlements()
@@ -70,28 +83,118 @@ struct LocalMusicApp: App {
             }
         }
         #if os(macOS)
-        // Playback menu: space toggles play/pause, Cmd+arrow keys move
-        // between tracks. Media keys go through MPRemoteCommandCenter.
-        .commands {
-            CommandMenu("Playback") {
-                Button(player.isPlaying ? "Pause" : "Play") {
-                    player.togglePlayPause()
-                }
-                .keyboardShortcut(.space, modifiers: [])
+        .commands { macCommands }
+        #endif
 
-                Button("Next Track") {
-                    player.next()
-                }
-                .keyboardShortcut(.rightArrow, modifiers: .command)
-
-                Button("Previous Track") {
-                    player.previous()
-                }
-                .keyboardShortcut(.leftArrow, modifiers: .command)
-            }
+        #if os(macOS)
+        // ChibiAudio > Settings… (Command-comma). Same stores as the main
+        // window, so changes show up there immediately.
+        Settings {
+            MacSettingsView()
+                .environment(player)
+                .environment(library)
+                .environment(recents)
+                .environment(tabs)
+                .environment(plus)
         }
+        .windowResizability(.contentMinSize)
         #endif
     }
+
+    /// Lets Settings reopen the music window on the Mac after it was closed.
+    static let mainWindowID = "main"
+
+    #if os(macOS)
+    /// Mac menus. Space and Command-Left/Right are menu key equivalents;
+    /// MacPlaybackKeyMonitor hands them to a text field while one is being
+    /// edited, so typing never toggles playback or skips tracks. Media
+    /// keys go through MPRemoteCommandCenter.
+    @CommandsBuilder
+    private var macCommands: some Commands {
+        CommandGroup(after: .newItem) {
+            Button("Choose Music Folder…") {
+                MacFolderAccess.chooseFolder(library: library)
+            }
+            .keyboardShortcut("o", modifiers: .command)
+
+            Button("Reload Music") {
+                Task { await library.rescan() }
+            }
+            .keyboardShortcut("r", modifiers: .command)
+            .disabled(library.folderURL == nil || library.isScanning)
+        }
+
+        CommandMenu("Playback") {
+            Button(player.isPlaying ? "Pause" : "Play") {
+                player.togglePlayPause()
+            }
+            .keyboardShortcut(.space, modifiers: [])
+            .disabled(player.currentTrack == nil)
+
+            Button("Next Track") {
+                player.next()
+            }
+            .keyboardShortcut(.rightArrow, modifiers: .command)
+            .disabled(player.currentTrack == nil)
+
+            Button("Previous Track") {
+                player.previous()
+            }
+            .keyboardShortcut(.leftArrow, modifiers: .command)
+            .disabled(player.currentTrack == nil)
+
+            Divider()
+
+            Toggle("Shuffle", isOn: Binding(
+                get: { player.shuffleEnabled },
+                set: { _ in player.toggleShuffle() }
+            ))
+
+            Picker("Repeat", selection: Binding(
+                get: { player.repeatMode },
+                set: { mode in
+                    // cycleRepeatMode keeps the queue state machine in step.
+                    while player.repeatMode != mode { player.cycleRepeatMode() }
+                }
+            )) {
+                Text("Off").tag(RepeatMode.off)
+                Text("All").tag(RepeatMode.all)
+                Text("One").tag(RepeatMode.one)
+            }
+
+            Divider()
+
+            Button(tabs.showsQueue ? "Hide Up Next" : "Show Up Next") {
+                tabs.showsQueue.toggle()
+            }
+            .keyboardShortcut("u", modifiers: [.command, .option])
+
+            Button("Go to Now Playing") {
+                tabs.selected = .nowPlaying
+            }
+            .keyboardShortcut("0", modifiers: .command)
+        }
+
+        CommandGroup(before: .sidebar) {
+            ForEach(Self.sidebarShortcuts, id: \.tab) { item in
+                Button(item.title) { tabs.selected = item.tab }
+                    .keyboardShortcut(item.key, modifiers: .command)
+            }
+            Divider()
+        }
+    }
+
+    private static let sidebarShortcuts: [(tab: ChibiTab, title: String, key: KeyEquivalent)] = [
+        (.home, "Home", "1"),
+        (.library, "Songs", "2"),
+        (.albums, "Albums", "3"),
+        (.artists, "Artists", "4"),
+        (.playlists, "Playlists", "5"),
+        (.radio, "Radio", "6"),
+        (.plex, "Plex", "7"),
+        (.bandcamp, "Bandcamp", "8"),
+    ]
+    #endif
 
     /// Tab bar on iOS, sidebar window on the Mac. Both route the same
     /// tab selection through TabRouter.

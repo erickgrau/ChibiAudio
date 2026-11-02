@@ -51,6 +51,7 @@ struct MiniPlayerView: View {
                     Image(systemName: "backward.fill")
                         .font(.body)
                 }
+                .accessibilityLabel("Previous Track")
 
                 Button {
                     player.togglePlayPause()
@@ -60,11 +61,13 @@ struct MiniPlayerView: View {
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .padding(.horizontal, 4)
+                .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
 
                 Button { player.next() } label: {
                     Image(systemName: "forward.fill")
                         .font(.body)
                 }
+                .accessibilityLabel("Next Track")
             }
             .foregroundStyle(ChibiTheme.textPrimary)
             .padding(.horizontal, 16)

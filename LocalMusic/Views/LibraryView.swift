@@ -8,8 +8,6 @@ struct LibraryView: View {
     @State private var showSettings = false
     @State private var showFolderPicker = false
     @State private var searchDraft = ""
-    @AppStorage("crashReportingEnabled") private var crashReportingEnabled = false
-    private let crashService = CrashDiagnosticsService.shared
 
     var body: some View {
         NavigationStack {
@@ -31,23 +29,10 @@ struct LibraryView: View {
                     sortMenu
                 }
                 ToolbarItem(placement: PlatformToolbar.trailing) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gear")
-                            .foregroundStyle(ChibiTheme.textPrimary)
-                            .overlay(alignment: .topTrailing) {
-                                if crashReportingEnabled, crashService.hasPendingCrash {
-                                    Circle()
-                                        .fill(Color.red)
-                                        .frame(width: 8, height: 8)
-                                        .offset(x: 4, y: -4)
-                                }
-                            }
-                    }
+                    SettingsToolbarButton { showSettings = true }
                 }
             }
-            .sheet(isPresented: $showSettings) {
+            .chibiSheet(isPresented: $showSettings, size: .regular) {
                 SettingsView()
             }
             .searchable(text: $searchDraft, prompt: "Search by title, artist, or album")
@@ -124,7 +109,7 @@ struct LibraryView: View {
             Spacer()
         }
         #if os(iOS)
-        .sheet(isPresented: $showFolderPicker) {
+        .chibiSheet(isPresented: $showFolderPicker) {
             DocumentPicker { pickerURL in
                 adoptFolder(pickerURL)
             }
@@ -262,8 +247,11 @@ struct LibraryView: View {
 /// Add-to-Playlist context menu.
 /// Pulled out so SwiftUI doesn't re-evaluate the entire `LibraryView` body
 /// each time `player.currentTrack` ticks.
-private struct TrackRowButton: View {
+struct TrackRowButton: View {
     let track: Track
+    /// Tracks that become the play queue. `nil` plays through the visible
+    /// (searched/sorted) library, as the Songs list always has.
+    var queue: [Track]? = nil
     @Environment(LibraryStore.self) private var library
     @Environment(AudioPlayerManager.self) private var player
     @State private var showAddToPlaylist = false
@@ -272,7 +260,7 @@ private struct TrackRowButton: View {
 
     var body: some View {
         Button {
-            let queue = library.displayTracks
+            let queue = queue ?? library.displayTracks
             if let idx = queue.firstIndex(where: { $0.id == track.id }) {
                 player.play(track: track, queue: queue, startIndex: idx)
             }
@@ -301,7 +289,7 @@ private struct TrackRowButton: View {
             }
         }
         .queueSwipeActions(for: track)
-        .sheet(isPresented: $showAddToPlaylist) {
+        .chibiSheet(isPresented: $showAddToPlaylist, size: .compact) {
             AddToPlaylistSheet(payload: .local(track))
         }
         .alert("Rename Track", isPresented: $showRename) {

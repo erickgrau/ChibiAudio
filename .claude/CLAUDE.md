@@ -12,7 +12,7 @@ xcodebuild -project LocalMusic.xcodeproj -scheme LocalMusic -destination 'generi
 xcodebuild -project LocalMusic.xcodeproj -scheme ChibiAudio -destination 'platform=macOS,arch=arm64' build
 ```
 
-Requires Xcode 16+, targets iOS 18+ / macOS 15+, Swift 6 with `SWIFT_STRICT_CONCURRENCY: complete`. Unit tests live in `LocalMusicTests/` (iOS-hosted) and run via `xcodebuild test`; CI runs them on every PR. Cross-app conventions are documented in `.claude/CONVENTIONS.md`.
+Requires Xcode 16+, targets iOS 18+ / macOS 15+, Swift 6 with `SWIFT_STRICT_CONCURRENCY: complete`. Unit tests live in `LocalMusicTests/` (iOS-hosted) and run via `xcodebuild test`; CI runs them on every PR. Mac-hosted UI regression tests (sheet sizing, keyboard routing, menu bar) live in `ChibiAudioMacTests/` under the ChibiAudio scheme. They are not in CI; see `docs/MAC_RECOVERY.md` for the local command. Cross-app conventions are documented in `.claude/CONVENTIONS.md`.
 
 ## Architecture
 
@@ -36,7 +36,9 @@ LocalMusic/
 ```
 
 - `LocalMusicApp.swift` — Entry point; `rootContent` picks the iOS TabView or `MacRootView` sidebar, `@State` stores, `scenePhase`-driven `LibraryStore.checkForExternalChanges()`
-- `Views/MacRootView.swift` — macOS `NavigationSplitView`: sidebar over the same `ChibiTab` sections, mini player under every section except Now Playing
+- `Views/MacRootView.swift` — macOS `NavigationSplitView`: sidebar (Listen / Library: Songs, Albums, Artists, Playlists / Sources: Radio, Plex, Bandcamp) over `ChibiTab`, `MacTransportBar` under every section except Now Playing, Up Next in an `.inspector` (`TabRouter.showsQueue`); also `MacSettingsView` (Settings scene, one tab per `SettingsPane`)
+- `Views/MacTransportBar.swift`, `MacLibraryBrowseViews.swift`, `MacSupport.swift` — Mac player bar + queue inspector, Albums/Artists from `LibraryBrowseIndex`, folder chooser, `MacPlaybackKeyMonitor` (Space / Cmd-arrows go to a focused text field, not the Playback menu)
+- `Services/MacAudioOutput.swift` — read-only CoreAudio default output name / nominal rate / transport for Mac Settings; the app never changes them
 - `Services/AudioPlayerManager.swift` — `@Observable @MainActor`; wraps `AVPlayer`, owns lock-screen/Control Center integration (shared `MPRemoteCommandCenter` code serves both platforms' media keys)
 - `Services/LibraryStore.swift` — `@Observable @MainActor`; slim `Track` array, debounced filter/sort pipeline, playlist CRUD
 - `Services/RecentsStore.swift` — Minimal play history for Home Recent / Continue
@@ -64,6 +66,8 @@ LocalMusic/
 
 ## Key patterns
 
+- Sheets: always `chibiSheet(isPresented:/item:size:)` (`Theme/PlatformChrome.swift`), never bare `.sheet`. macOS sizes sheets from content ideal size, so bare sheets around List/Form/ScrollView collapse to the toolbar (470 x 113). No-op on iOS
+- Settings: one `SettingsView` filtered by `SettingsPane`; iOS shows all panes in a sheet, the Mac Settings scene shows one pane per tab. Add new settings to the right pane rather than a Mac-only copy
 - Platform gating: shared files use `#if os(iOS)` for UIKit/AVAudioSession/DACSession code; UI-only API differences go through `Theme/PlatformChrome.swift` shims (`PlatformImage`, `PlatformToolbar`, `chibiNavChrome`, etc.). AdMob (`Services/Ads/`) is excluded from the mac target sources entirely
 - Folder access uses security-scoped bookmarks (`PersistenceManager`); `AudioPlayerManager.startAccessingFolder()` must be active for file reads
 - Playlists store `trackURLs: [URL]` and parallel `rawPaths: [String]` — always keep both in sync when mutating

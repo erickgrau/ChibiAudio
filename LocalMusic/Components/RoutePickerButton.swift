@@ -4,8 +4,8 @@ import SwiftUI
 
 /// System audio route picker (AirPlay / Bluetooth / USB DAC) for Now Playing Soft PASS.
 /// Keeps AVPlayer external playback as the route authority; does not force a custom session path.
-/// iOS-only: on the Mac, output devices are chosen in Sound Settings and the
-/// app follows the system default.
+/// The Mac variant below wraps the AppKit AVRoutePickerView for AirPlay; other
+/// Mac outputs follow the system default chosen in Sound settings.
 struct RoutePickerButton: UIViewRepresentable {
     var tint: UIColor = UIColor(ChibiTheme.amber)
 
@@ -23,6 +23,33 @@ struct RoutePickerButton: UIViewRepresentable {
     func updateUIView(_ uiView: AVRoutePickerView, context: Context) {
         uiView.tintColor = tint
         uiView.activeTintColor = UIColor(ChibiTheme.teal)
+    }
+}
+#else
+import AVKit
+import SwiftUI
+
+/// Output picker for the Mac player bar: the system AVRoutePickerView,
+/// which lists AirPlay devices for the given player. Built-in, USB and
+/// Bluetooth outputs still follow the system default chosen in Sound
+/// settings; the app does not switch them itself.
+struct RoutePickerButton: NSViewRepresentable {
+    var player: AVPlayer?
+
+    func makeNSView(context: Context) -> AVRoutePickerView {
+        let view = AVRoutePickerView()
+        view.isRoutePickerButtonBordered = false
+        view.setRoutePickerButtonColor(NSColor(ChibiTheme.textSecondary), for: .normal)
+        view.setRoutePickerButtonColor(NSColor(ChibiTheme.teal), for: .active)
+        view.setAccessibilityLabel("Audio Output")
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ nsView: AVRoutePickerView, context: Context) {
+        if nsView.player !== player {
+            nsView.player = player
+        }
     }
 }
 #endif
